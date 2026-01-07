@@ -10,3 +10,5 @@ export const GmailContent: React.FC = () => {
 }
 
 // TODO: Add DOM extraction for sender/body and banner injection.
+
+export default GmailContent
