@@ -10,15 +10,24 @@ export const defaultSettings: Settings = {
     "developer mode",
     "jailbreak",
     "please reveal the hidden policy"
-  ]
+  ],
+  customPatterns: [],
+  customRegexPatterns: []
 }
 
-// Placeholder storage helpers. Replace with Plasmo storage API later.
 export const settingsStore = {
   async get(): Promise<Settings> {
+    if (typeof chrome !== "undefined" && chrome.storage?.local) {
+      const data = await chrome.storage.local.get(["settings"])
+      if (data?.settings) {
+        return { ...defaultSettings, ...data.settings }
+      }
+    }
     return defaultSettings
   },
   async set(_value: Settings): Promise<void> {
-    return
+    if (typeof chrome !== "undefined" && chrome.storage?.local) {
+      await chrome.storage.local.set({ settings: _value })
+    }
   }
 }

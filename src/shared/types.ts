@@ -19,4 +19,6 @@ export interface Settings {
   enablePromptFirewall: boolean
   enablePhishingRadar: boolean
   bannedIntents: string[]
+  customPatterns: string[]
+  customRegexPatterns: string[]
 }

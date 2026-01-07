@@ -1,18 +1,22 @@
 import type { PlasmoCSConfig } from "plasmo"
+import { settingsStore } from "../shared/storage"
 
 export const config: PlasmoCSConfig = {
   matches: ["https://chatgpt.com/*"],
   run_at: "document_end"
 }
 
-const PLACEHOLDER_REGEX = /<(EMAIL|PHONE|CC|PASSWORD)_\d+>/g
+const PLACEHOLDER_REGEX = /<(EMAIL|PHONE|CC|PASSWORD|CUSTOM)_\d+>/g
 
 const mappingByPlaceholder = new Map<string, string>()
 const mappingByOriginal = new Map<string, string>()
-const counters = { EMAIL: 0, PHONE: 0, CC: 0, PASSWORD: 0 }
+const counters = { EMAIL: 0, PHONE: 0, CC: 0, PASSWORD: 0, CUSTOM: 0 }
 let badgeEl: HTMLDivElement | null = null
 let assistantObserver: MutationObserver | null = null
 let lastPromptEl: HTMLElement | null = null
+let customPatterns: string[] = []
+let customRegexPatterns: string[] = []
+let customRegexes: RegExp[] = []
 let lastRedaction:
   | {
       original: string
@@ -27,6 +31,36 @@ const PHONE_REGEX =
 const CC_REGEX = /\b(?:\d[\s-]*?){13,19}\b/g
 const PASSWORD_VALUE_REGEX =
   /\b(password|passcode|passwd|pwd)(\s*(?:is|=|:)\s*)([^\s,;]+)/gi
+
+const escapeRegExp = (value: string) => value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")
+
+const rebuildCustomRegexes = () => {
+  const textRegexes = customPatterns
+    .map((pattern) => {
+      const source = escapeRegExp(pattern.trim())
+      if (!source) return null
+      try {
+        return new RegExp(source, "g")
+      } catch {
+        return null
+      }
+    })
+    .filter((regex): regex is RegExp => Boolean(regex))
+
+  const regexRegexes = customRegexPatterns
+    .map((pattern) => pattern.trim())
+    .filter(Boolean)
+    .map((source) => {
+      try {
+        return new RegExp(source, "g")
+      } catch {
+        return null
+      }
+    })
+    .filter((regex): regex is RegExp => Boolean(regex))
+
+  customRegexes = [...textRegexes, ...regexRegexes]
+}
 
 const isValidLuhn = (digits: string) => {
   let sum = 0
@@ -99,6 +133,34 @@ const redactPasswordValues = (text: string, created?: string[]) => {
   })
 }
 
+const redactCustomPatterns = (text: string, created?: string[]) => {
+  if (!customRegexes.length) {
+    return text
+  }
+  let redacted = text
+  customRegexes.forEach((regex) => {
+    regex.lastIndex = 0
+    redacted = redacted.replace(regex, (match) => {
+      if (!match) return match
+      if (PLACEHOLDER_REGEX.test(match)) {
+        return match
+      }
+      const existing = mappingByOriginal.get(match)
+      if (existing) {
+        return existing
+      }
+      const placeholder = makePlaceholder("CUSTOM")
+      mappingByOriginal.set(match, placeholder)
+      mappingByPlaceholder.set(placeholder, match)
+      if (created) {
+        created.push(placeholder)
+      }
+      return placeholder
+    })
+  })
+  return redacted
+}
+
 const redactPhones = (text: string, created?: string[]) => {
   PHONE_REGEX.lastIndex = 0
   return text.replace(PHONE_REGEX, (match) => {
@@ -156,9 +218,11 @@ const redactTextWithReport = (text: string) => {
   const phoneCount = countMatches(text, PHONE_REGEX)
   const ccCount = countMatches(text, CC_REGEX)
   const passwordCount = countMatches(text, PASSWORD_VALUE_REGEX)
+  const customCount = customRegexes.reduce((sum, regex) => sum + countMatches(text, regex), 0)
 
   let redacted = text
   redacted = redactPasswordValues(redacted, created)
+  redacted = redactCustomPatterns(redacted, created)
   redacted = replaceWithPlaceholders(redacted, "EMAIL", EMAIL_REGEX, created)
   redacted = redactCreditCards(redacted, created)
   redacted = redactPhones(redacted, created)
@@ -166,7 +230,7 @@ const redactTextWithReport = (text: string) => {
   return {
     redacted,
     created,
-    report: { emailCount, phoneCount, ccCount, passwordCount }
+    report: { emailCount, phoneCount, ccCount, passwordCount, customCount }
   }
 }
 
@@ -553,6 +617,19 @@ const positionControls = () => {
   controls.style.left = `${left}px`
 }
 
+const loadSettings = async () => {
+  try {
+    const settings = await settingsStore.get()
+    customPatterns = settings.customPatterns || []
+    customRegexPatterns = settings.customRegexPatterns || []
+    rebuildCustomRegexes()
+  } catch {
+    customPatterns = []
+    customRegexPatterns = []
+    customRegexes = []
+  }
+}
+
 const startAssistantObserver = () => {
   if (assistantObserver || !document.body) {
     return
@@ -566,6 +643,19 @@ const init = () => {
   ensureStyles()
   ensureControls()
   positionControls()
+  loadSettings()
+  if (typeof chrome !== "undefined" && chrome.storage?.onChanged) {
+    chrome.storage.onChanged.addListener((changes, areaName) => {
+      if (areaName !== "local" || !changes.settings) return
+      const next = changes.settings.newValue
+      if (!next) return
+      customPatterns = Array.isArray(next.customPatterns) ? next.customPatterns : []
+      customRegexPatterns = Array.isArray(next.customRegexPatterns)
+        ? next.customRegexPatterns
+        : []
+      rebuildCustomRegexes()
+    })
+  }
   document.addEventListener("focusin", (event) => {
     if (isPromptCandidate(event.target as Element)) {
       lastPromptEl = event.target as HTMLElement
