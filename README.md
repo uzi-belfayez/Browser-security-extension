@@ -1,5 +1,30 @@
 This is a [Plasmo extension](https://docs.plasmo.com/) project bootstrapped with [`plasmo init`](https://www.npmjs.com/package/plasmo).
 
+## Current Features (MVP)
+
+### Feature A - PII Redactor (ChatGPT)
+- Redact PII in the prompt before sending.
+- Supported types: email, phone, credit card (Luhn validated), and password values (e.g. `password is ...`).
+- Visible UI next to the prompt:
+  - `Redact PII` button: replaces detected items with placeholders like `<EMAIL_1>`, `<PHONE_1>`, `<CC_1>`, `<PASSWORD_1>`, `<CUSTOM_1>`.
+  - `Restore` button: restores the original prompt if no edits were made after redaction.
+  - Status text + chips list of placeholders used.
+- Robust prompt detection for ChatGPT ProseMirror input (`#prompt-textarea`).
+
+#### Custom Patterns (Feature 5)
+- Two lists in the popup:
+  - Plain text patterns (exact match).
+  - Regex patterns (regular expressions).
+- All matches are replaced with `<CUSTOM_#>`.
+- Patterns are stored in `chrome.storage.local` (requires `storage` permission).
+- Popup has a "Save patterns" button to persist entries.
+
+### Feature B - Prompt Firewall (planned)
+- Local checks against banned intents/keywords before send.
+
+### Feature C - Phishing Radar (planned)
+- Gmail sender/body extraction + backend risk banner.
+
 ## Getting Started
 
 First, run the development server:
