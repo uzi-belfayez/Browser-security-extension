@@ -52,7 +52,8 @@ const makePlaceholder = (type: keyof typeof counters) => {
 const replaceWithPlaceholders = (
   text: string,
   type: keyof typeof counters,
-  regex: RegExp
+  regex: RegExp,
+  created?: string[]
 ) => {
   regex.lastIndex = 0
   return text.replace(regex, (match) => {
@@ -66,6 +67,9 @@ const replaceWithPlaceholders = (
     const placeholder = makePlaceholder(type)
     mappingByOriginal.set(match, placeholder)
     mappingByPlaceholder.set(placeholder, match)
+    if (created) {
+      created.push(placeholder)
+    }
     return placeholder
   })
 }
@@ -75,7 +79,7 @@ const countMatches = (text: string, regex: RegExp) => {
   return text.match(regex)?.length ?? 0
 }
 
-const redactPasswordValues = (text: string) => {
+const redactPasswordValues = (text: string, created?: string[]) => {
   PASSWORD_VALUE_REGEX.lastIndex = 0
   return text.replace(PASSWORD_VALUE_REGEX, (match, label, separator, value) => {
     if (PLACEHOLDER_REGEX.test(value)) {
@@ -88,11 +92,14 @@ const redactPasswordValues = (text: string) => {
     const placeholder = makePlaceholder("PASSWORD")
     mappingByOriginal.set(value, placeholder)
     mappingByPlaceholder.set(placeholder, value)
+    if (created) {
+      created.push(placeholder)
+    }
     return `${label}${separator}${placeholder}`
   })
 }
 
-const redactPhones = (text: string) => {
+const redactPhones = (text: string, created?: string[]) => {
   PHONE_REGEX.lastIndex = 0
   return text.replace(PHONE_REGEX, (match) => {
     if (PLACEHOLDER_REGEX.test(match)) {
@@ -109,11 +116,14 @@ const redactPhones = (text: string) => {
     const placeholder = makePlaceholder("PHONE")
     mappingByOriginal.set(match, placeholder)
     mappingByPlaceholder.set(placeholder, match)
+    if (created) {
+      created.push(placeholder)
+    }
     return placeholder
   })
 }
 
-const redactCreditCards = (text: string) => {
+const redactCreditCards = (text: string, created?: string[]) => {
   CC_REGEX.lastIndex = 0
   return text.replace(CC_REGEX, (match) => {
     if (PLACEHOLDER_REGEX.test(match)) {
@@ -133,24 +143,29 @@ const redactCreditCards = (text: string) => {
     const placeholder = makePlaceholder("CC")
     mappingByOriginal.set(match, placeholder)
     mappingByPlaceholder.set(placeholder, match)
+    if (created) {
+      created.push(placeholder)
+    }
     return placeholder
   })
 }
 
 const redactTextWithReport = (text: string) => {
+  const created: string[] = []
   const emailCount = countMatches(text, EMAIL_REGEX)
   const phoneCount = countMatches(text, PHONE_REGEX)
   const ccCount = countMatches(text, CC_REGEX)
   const passwordCount = countMatches(text, PASSWORD_VALUE_REGEX)
 
   let redacted = text
-  redacted = redactPasswordValues(redacted)
-  redacted = replaceWithPlaceholders(redacted, "EMAIL", EMAIL_REGEX)
-  redacted = redactCreditCards(redacted)
-  redacted = redactPhones(redacted)
+  redacted = redactPasswordValues(redacted, created)
+  redacted = replaceWithPlaceholders(redacted, "EMAIL", EMAIL_REGEX, created)
+  redacted = redactCreditCards(redacted, created)
+  redacted = redactPhones(redacted, created)
 
   return {
     redacted,
+    created,
     report: { emailCount, phoneCount, ccCount, passwordCount }
   }
 }
@@ -230,6 +245,8 @@ const CONTROLS_ID = "vamisec-controls"
 const BUTTON_ID = "vamisec-redact-btn"
 const RESTORE_ID = "vamisec-restore-btn"
 const STATUS_ID = "vamisec-redact-status"
+const LIST_ID = "vamisec-redact-list"
+const STYLE_ID = "vamisec-style"
 
 const isPromptCandidate = (el: Element | null) => {
   if (!el || !(el instanceof HTMLElement)) return false
@@ -288,23 +305,28 @@ const setPromptText = (el: HTMLElement, nextValue: string) => {
   }
   el.focus()
   lastPromptEl = el
-  const selection = window.getSelection()
-  if (selection) {
-    selection.removeAllRanges()
-    const range = document.createRange()
-    range.selectNodeContents(el)
-    selection.addRange(range)
-  }
-  const usedCommand = document.execCommand("insertText", false, nextValue)
-  if (!usedCommand) {
-    el.innerText = nextValue
-  }
-  el.dispatchEvent(new InputEvent("input", { bubbles: true, inputType: "insertText" }))
+  el.textContent = nextValue
+  el.dispatchEvent(new Event("input", { bubbles: true }))
 }
 
 const getStoredOriginal = (el: HTMLElement) => el.getAttribute("data-vamisec-original")
 const getStoredRedacted = (el: HTMLElement) => el.getAttribute("data-vamisec-redacted")
 const getStoredState = (el: HTMLElement) => el.getAttribute("data-vamisec-state")
+const normalizeText = (text: string) =>
+  text
+    .replace(/[\u200B-\u200D\uFEFF]/g, "")
+    .replace(/\s+/g, " ")
+    .trim()
+
+const canRestore = (currentText: string, storedRedacted: string | null) => {
+  if (!storedRedacted) return true
+  if (normalizeText(currentText) === normalizeText(storedRedacted)) {
+    return true
+  }
+  const placeholders = storedRedacted.match(PLACEHOLDER_REGEX) || []
+  if (!placeholders.length) return false
+  return placeholders.every((placeholder) => currentText.includes(placeholder))
+}
 
 const setStoredState = (
   el: HTMLElement,
@@ -321,6 +343,54 @@ const clearStoredState = (el: HTMLElement) => {
   el.removeAttribute("data-vamisec-state")
 }
 
+const ensureStyles = () => {
+  if (document.getElementById(STYLE_ID)) {
+    return
+  }
+  const style = document.createElement("style")
+  style.id = STYLE_ID
+  style.textContent = `
+    .vamisec-flash {
+      outline: 2px solid #f59e0b !important;
+      box-shadow: 0 0 0 3px rgba(245, 158, 11, 0.2) !important;
+    }
+    #${LIST_ID} {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      max-width: 360px;
+    }
+    #${LIST_ID} .vamisec-chip {
+      background: #1f2937;
+      color: #e2e8f0;
+      border: 1px solid #334155;
+      border-radius: 999px;
+      padding: 2px 6px;
+      font-size: 10px;
+    }
+  `
+  document.head.appendChild(style)
+}
+
+const updateRedactionList = (placeholders: string[]) => {
+  const listEl = document.getElementById(LIST_ID)
+  if (!listEl) return
+  listEl.textContent = ""
+  const unique = Array.from(new Set(placeholders))
+  unique.slice(0, 6).forEach((placeholder) => {
+    const chip = document.createElement("span")
+    chip.className = "vamisec-chip"
+    chip.textContent = placeholder
+    listEl.appendChild(chip)
+  })
+  if (unique.length > 6) {
+    const more = document.createElement("span")
+    more.className = "vamisec-chip"
+    more.textContent = `+${unique.length - 6}`
+    listEl.appendChild(more)
+  }
+}
+
 const ensureControls = () => {
   if (document.getElementById(CONTROLS_ID)) {
     return
@@ -331,8 +401,9 @@ const ensureControls = () => {
   controls.style.position = "fixed"
   controls.style.zIndex = "99999"
   controls.style.display = "flex"
-  controls.style.alignItems = "center"
-  controls.style.gap = "8px"
+  controls.style.flexDirection = "column"
+  controls.style.alignItems = "flex-start"
+  controls.style.gap = "6px"
   controls.style.padding = "6px 8px"
   controls.style.background = "#0b1220"
   controls.style.border = "1px solid #1e293b"
@@ -340,6 +411,11 @@ const ensureControls = () => {
   controls.style.boxShadow = "0 6px 18px rgba(2, 6, 23, 0.35)"
   controls.style.fontFamily = "sans-serif"
   controls.style.color = "#e2e8f0"
+
+  const row = document.createElement("div")
+  row.style.display = "flex"
+  row.style.alignItems = "center"
+  row.style.gap = "8px"
 
   const button = document.createElement("button")
   button.id = BUTTON_ID
@@ -369,6 +445,9 @@ const ensureControls = () => {
   status.style.fontSize = "11px"
   status.style.color = "#cbd5f5"
 
+  const list = document.createElement("div")
+  list.id = LIST_ID
+
   button.addEventListener("click", (event) => {
     event.preventDefault()
     const promptEl = getPromptElement()
@@ -383,22 +462,23 @@ const ensureControls = () => {
     }
     const storedState = getStoredState(promptEl)
     const storedRedacted = getStoredRedacted(promptEl)
-    if (storedState === "redacted" && storedRedacted && original === storedRedacted) {
+    if (
+      storedState === "redacted" &&
+      storedRedacted &&
+      normalizeText(original) === normalizeText(storedRedacted)
+    ) {
       updateStatus("Already redacted")
       return
     }
-    if (storedState && storedRedacted && original !== storedRedacted) {
+    if (storedState && storedRedacted && normalizeText(original) !== normalizeText(storedRedacted)) {
       clearStoredState(promptEl)
     }
-    const { redacted, report } = redactTextWithReport(original)
+    const { redacted, created } = redactTextWithReport(original)
     setPromptText(promptEl, redacted)
     setStoredState(promptEl, { original, redacted, state: "redacted" })
     lastRedaction = { original, redacted, promptEl }
-    const total =
-      report.emailCount +
-      report.phoneCount +
-      report.ccCount +
-      (report.passwordCount ?? 0)
+    updateRedactionList(created.length ? created : redacted.match(PLACEHOLDER_REGEX) || [])
+    const total = created.length
     updateStatus(
       total
         ? `Redacted ${total} item${total === 1 ? "" : "s"}`
@@ -423,7 +503,7 @@ const ensureControls = () => {
       return
     }
     const currentText = getPromptText(sourceEl)
-    if (storedRedacted && currentText !== storedRedacted) {
+    if (!canRestore(currentText, storedRedacted)) {
       updateStatus("Edited after redaction")
       return
     }
@@ -433,12 +513,15 @@ const ensureControls = () => {
       redacted: storedRedacted ?? "",
       state: "original"
     })
+    updateRedactionList([])
     updateStatus("Restored original")
   })
 
-  controls.appendChild(button)
-  controls.appendChild(restore)
-  controls.appendChild(status)
+  row.appendChild(button)
+  row.appendChild(restore)
+  row.appendChild(status)
+  controls.appendChild(row)
+  controls.appendChild(list)
   document.documentElement.appendChild(controls)
 }
 
@@ -480,6 +563,7 @@ const startAssistantObserver = () => {
 const init = () => {
   startAssistantObserver()
   ensureBadge()
+  ensureStyles()
   ensureControls()
   positionControls()
   document.addEventListener("focusin", (event) => {
