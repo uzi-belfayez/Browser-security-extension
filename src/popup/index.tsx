@@ -43,6 +43,44 @@ export const Popup: React.FC = () => {
     })
   }
 
+  const onExport = () => {
+    const payload = {
+      customPatterns: settings.customPatterns,
+      customRegexPatterns: settings.customRegexPatterns
+    }
+    const blob = new Blob([JSON.stringify(payload, null, 2)], {
+      type: "application/json"
+    })
+    const url = URL.createObjectURL(blob)
+    const link = document.createElement("a")
+    link.href = url
+    link.download = "vamisec-patterns.json"
+    link.click()
+    URL.revokeObjectURL(url)
+  }
+
+  const onImport = (file: File) => {
+    const reader = new FileReader()
+    reader.onload = () => {
+      try {
+        const data = JSON.parse(String(reader.result || "{}"))
+        const next = {
+          ...settings,
+          customPatterns: Array.isArray(data.customPatterns) ? data.customPatterns : [],
+          customRegexPatterns: Array.isArray(data.customRegexPatterns)
+            ? data.customRegexPatterns
+            : []
+        }
+        updateSettings(next)
+        setRawTextPatterns(next.customPatterns.join("\n"))
+        setRawRegexPatterns(next.customRegexPatterns.join("\n"))
+      } catch {
+        return
+      }
+    }
+    reader.readAsText(file)
+  }
+
   return (
     <div style={{ padding: 12, fontFamily: "sans-serif" }}>
       <h3>VamiSec Settings</h3>
@@ -79,6 +117,46 @@ export const Popup: React.FC = () => {
         >
           Save patterns
         </button>
+        <div style={{ display: "flex", gap: 8, marginTop: 8 }}>
+          <button
+            type="button"
+            style={{
+              padding: "6px 10px",
+              borderRadius: 6,
+              border: "1px solid #333",
+              background: "#1f2937",
+              color: "#fff",
+              fontSize: 12,
+              cursor: "pointer"
+            }}
+            onClick={onExport}
+          >
+            Export
+          </button>
+          <label
+            style={{
+              padding: "6px 10px",
+              borderRadius: 6,
+              border: "1px solid #333",
+              background: "#1f2937",
+              color: "#fff",
+              fontSize: 12,
+              cursor: "pointer"
+            }}
+          >
+            Import
+            <input
+              type="file"
+              accept="application/json"
+              style={{ display: "none" }}
+              onChange={(event) => {
+                const file = event.target.files?.[0]
+                if (file) onImport(file)
+                event.currentTarget.value = ""
+              }}
+            />
+          </label>
+        </div>
         <p style={{ fontSize: 12, color: "#555" }}>
           These patterns will be replaced with {"<CUSTOM_#>"} before sending.
         </p>
