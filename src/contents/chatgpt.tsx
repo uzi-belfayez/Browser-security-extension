@@ -17,6 +17,7 @@ let lastPromptEl: HTMLElement | null = null
 let customPatterns: string[] = []
 let customRegexPatterns: string[] = []
 let customRegexes: RegExp[] = []
+let redactorEnabled = true
 let lastRedaction:
   | {
       original: string
@@ -512,8 +513,21 @@ const ensureControls = () => {
   const list = document.createElement("div")
   list.id = LIST_ID
 
+  const setControlState = (enabled: boolean) => {
+    const controls = document.getElementById(CONTROLS_ID)
+    if (controls) {
+      controls.style.display = enabled ? "flex" : "none"
+    }
+    button.disabled = !enabled
+    restore.disabled = !enabled
+  }
+
   button.addEventListener("click", (event) => {
     event.preventDefault()
+    if (!redactorEnabled) {
+      updateStatus("PII redactor disabled")
+      return
+    }
     const promptEl = getPromptElement()
     if (!promptEl) {
       updateStatus("No prompt box found")
@@ -552,6 +566,10 @@ const ensureControls = () => {
 
   restore.addEventListener("click", (event) => {
     event.preventDefault()
+    if (!redactorEnabled) {
+      updateStatus("PII redactor disabled")
+      return
+    }
     const promptEl = getPromptElement()
     const sourceEl =
       (promptEl && document.contains(promptEl) ? promptEl : null) ||
@@ -587,6 +605,7 @@ const ensureControls = () => {
   controls.appendChild(row)
   controls.appendChild(list)
   document.documentElement.appendChild(controls)
+  setControlState(redactorEnabled)
 }
 
 const updateStatus = (text: string) => {
@@ -604,14 +623,13 @@ const positionControls = () => {
   if (!rect.width || !rect.height) return
 
   const margin = 8
-  const preferredTop = rect.top - controls.offsetHeight - margin
-  const top =
-    preferredTop > margin
-      ? preferredTop
-      : Math.min(window.innerHeight - controls.offsetHeight - margin, rect.bottom + margin)
+  const top = Math.min(
+    window.innerHeight - controls.offsetHeight - margin,
+    Math.max(margin, rect.top + rect.height / 2 - controls.offsetHeight / 2)
+  )
   const left = Math.min(
     window.innerWidth - controls.offsetWidth - margin,
-    Math.max(margin, rect.right - controls.offsetWidth)
+    rect.right + margin
   )
   controls.style.top = `${top}px`
   controls.style.left = `${left}px`
@@ -622,11 +640,13 @@ const loadSettings = async () => {
     const settings = await settingsStore.get()
     customPatterns = settings.customPatterns || []
     customRegexPatterns = settings.customRegexPatterns || []
+    redactorEnabled = settings.enablePiiRedactor !== false
     rebuildCustomRegexes()
   } catch {
     customPatterns = []
     customRegexPatterns = []
     customRegexes = []
+    redactorEnabled = true
   }
 }
 
@@ -643,7 +663,12 @@ const init = () => {
   ensureStyles()
   ensureControls()
   positionControls()
-  loadSettings()
+  loadSettings().then(() => {
+    const controls = document.getElementById(CONTROLS_ID)
+    if (controls) {
+      controls.style.display = redactorEnabled ? "flex" : "none"
+    }
+  })
   if (typeof chrome !== "undefined" && chrome.storage?.onChanged) {
     chrome.storage.onChanged.addListener((changes, areaName) => {
       if (areaName !== "local" || !changes.settings) return
@@ -653,7 +678,14 @@ const init = () => {
       customRegexPatterns = Array.isArray(next.customRegexPatterns)
         ? next.customRegexPatterns
         : []
+      if (typeof next.enablePiiRedactor === "boolean") {
+        redactorEnabled = next.enablePiiRedactor
+      }
       rebuildCustomRegexes()
+      const controls = document.getElementById(CONTROLS_ID)
+      if (controls) {
+        controls.style.display = redactorEnabled ? "flex" : "none"
+      }
     })
   }
   document.addEventListener("focusin", (event) => {

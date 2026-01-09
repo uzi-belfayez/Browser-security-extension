@@ -16,9 +16,8 @@ export interface PhishingResponse {
 
 export interface Settings {
   enablePiiRedactor: boolean
-  enablePromptFirewall: boolean
   enablePhishingRadar: boolean
-  bannedIntents: string[]
   customPatterns: string[]
   customRegexPatterns: string[]
+  uiTheme: "light" | "dark" | "system"
 }

@@ -43,6 +43,7 @@ export const Popup: React.FC = () => {
     })
   }
 
+
   const onExport = () => {
     const payload = {
       customPatterns: settings.customPatterns,
@@ -81,86 +82,289 @@ export const Popup: React.FC = () => {
     reader.readAsText(file)
   }
 
-  return (
-    <div style={{ padding: 12, fontFamily: "sans-serif" }}>
-      <h3>VamiSec Settings</h3>
-      <section style={{ marginTop: 12 }}>
-        <h4>Custom Redaction Patterns</h4>
-        <textarea
-          rows={6}
-          style={{ width: "100%", fontFamily: "monospace", fontSize: 12 }}
-          placeholder={`Plain text patterns (one per line or comma separated)\nExample:\nclient_secret\ninternal project`}
-          value={rawTextPatterns}
-          onChange={(event) => setRawTextPatterns(event.target.value)}
-        />
-        <div style={{ height: 8 }} />
-        <textarea
-          rows={6}
-          style={{ width: "100%", fontFamily: "monospace", fontSize: 12 }}
-          placeholder={`Regex patterns (one per line or comma separated)\nExample:\nEMP-\\d{6}\nINV-\\d{4}-\\d{2}`}
-          value={rawRegexPatterns}
-          onChange={(event) => setRawRegexPatterns(event.target.value)}
-        />
-        <button
-          type="button"
-          style={{
-            marginTop: 8,
-            padding: "6px 10px",
-            borderRadius: 6,
-            border: "1px solid #333",
-            background: "#111",
-            color: "#fff",
-            fontSize: 12,
-            cursor: "pointer"
-          }}
-          onClick={savePatterns}
-        >
-          Save patterns
-        </button>
-        <div style={{ display: "flex", gap: 8, marginTop: 8 }}>
-          <button
-            type="button"
-            style={{
-              padding: "6px 10px",
-              borderRadius: 6,
-              border: "1px solid #333",
-              background: "#1f2937",
-              color: "#fff",
-              fontSize: 12,
-              cursor: "pointer"
-            }}
-            onClick={onExport}
-          >
-            Export
-          </button>
-          <label
-            style={{
-              padding: "6px 10px",
-              borderRadius: 6,
-              border: "1px solid #333",
-              background: "#1f2937",
-              color: "#fff",
-              fontSize: 12,
-              cursor: "pointer"
-            }}
-          >
-            Import
-            <input
-              type="file"
-              accept="application/json"
-              style={{ display: "none" }}
-              onChange={(event) => {
-                const file = event.target.files?.[0]
-                if (file) onImport(file)
-                event.currentTarget.value = ""
-              }}
-            />
-          </label>
+  const prefersDark =
+    typeof window !== "undefined" &&
+    window.matchMedia &&
+    window.matchMedia("(prefers-color-scheme: dark)").matches
+  const isDark =
+    settings.uiTheme === "dark" || (settings.uiTheme === "system" && prefersDark)
+  const styles = {
+    root: {
+      width: 360,
+      padding: 16,
+      fontFamily: '"Space Grotesk", "Sora", "Segoe UI", sans-serif',
+      color: isDark ? "#e2e8f0" : "#0f172a",
+      background: isDark
+        ? "radial-gradient(120% 90% at 0% 0%, #1e293b 0%, #0b1220 50%, #0a0f1a 100%)"
+        : "radial-gradient(120% 90% at 0% 0%, #f8fafc 0%, #eef2f7 50%, #e2e8f0 100%)",
+      borderRadius: 12
+    },
+    header: {
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "space-between",
+      marginBottom: 12
+    },
+    title: {
+      fontSize: 18,
+      margin: 0,
+      letterSpacing: "0.4px"
+    },
+    badge: {
+      fontSize: 10,
+      padding: "4px 8px",
+      borderRadius: 999,
+      border: isDark ? "1px solid #334155" : "1px solid #cbd5f5",
+      background: isDark ? "#111827" : "#e2e8f0",
+      color: isDark ? "#cbd5f5" : "#0f172a",
+      textTransform: "uppercase"
+    },
+    card: {
+      background: isDark
+        ? "linear-gradient(180deg, #0f172a 0%, #0b1220 100%)"
+        : "linear-gradient(180deg, #ffffff 0%, #f1f5f9 100%)",
+      border: isDark ? "1px solid #1f2a44" : "1px solid #d8e1ec",
+      borderRadius: 12,
+      padding: 12,
+      boxShadow: isDark
+        ? "0 12px 24px rgba(2, 6, 23, 0.35)"
+        : "0 12px 24px rgba(148, 163, 184, 0.35)"
+    },
+    sectionTitle: {
+      margin: "0 0 8px 0",
+      fontSize: 13,
+      color: isDark ? "#e2e8f0" : "#0f172a",
+      letterSpacing: "0.3px",
+      textTransform: "uppercase"
+    },
+    label: {
+      fontSize: 12,
+      color: isDark ? "#cbd5f5" : "#475569",
+      marginBottom: 6
+    },
+    textarea: {
+      width: "100%",
+      minHeight: 88,
+      resize: "vertical" as const,
+      borderRadius: 8,
+      border: isDark ? "1px solid #293548" : "1px solid #cbd5f5",
+      background: isDark ? "#0b1220" : "#ffffff",
+      color: isDark ? "#e2e8f0" : "#0f172a",
+      padding: "8px 10px",
+      fontFamily: '"JetBrains Mono", "Fira Code", "SFMono-Regular", monospace',
+      fontSize: 12,
+      lineHeight: 1.4
+    },
+    buttonPrimary: {
+      padding: "8px 12px",
+      borderRadius: 8,
+      border: isDark ? "1px solid #1f2a44" : "1px solid #38bdf8",
+      background: "#0ea5e9",
+      color: "#08101b",
+      fontSize: 12,
+      fontWeight: 600,
+      cursor: "pointer"
+    },
+    buttonGhost: {
+      padding: "8px 12px",
+      borderRadius: 8,
+      border: isDark ? "1px solid #293548" : "1px solid #cbd5f5",
+      background: "transparent",
+      color: isDark ? "#e2e8f0" : "#0f172a",
+      fontSize: 12,
+      cursor: "pointer"
+    },
+    helper: {
+      fontSize: 11,
+      color: isDark ? "#94a3b8" : "#64748b",
+      marginTop: 8
+    },
+    row: {
+      display: "flex",
+      gap: 8,
+      flexWrap: "wrap" as const
+    },
+    toggleRow: {
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "space-between",
+      padding: "8px 10px",
+      borderRadius: 8,
+      border: isDark ? "1px solid #1f2a44" : "1px solid #d8e1ec",
+      background: isDark ? "#0b1220" : "#f8fafc",
+      marginBottom: 10
+    },
+    toggleLabel: {
+      fontSize: 12,
+      color: isDark ? "#e2e8f0" : "#0f172a"
+    }
+  }
+
+  const switchStyles = {
+    track: {
+      width: 38,
+      height: 20,
+      borderRadius: 999,
+      background: isDark ? "#1f2937" : "#cbd5f5",
+      border: isDark ? "1px solid #334155" : "1px solid #94a3b8",
+      position: "relative" as const,
+      cursor: "pointer"
+    },
+    thumb: (on: boolean) => ({
+      width: 16,
+      height: 16,
+      borderRadius: 999,
+      background: on ? "#38bdf8" : "#e2e8f0",
+      position: "absolute" as const,
+      top: 1,
+      left: on ? 19 : 1,
+      transition: "left 160ms ease"
+    })
+  }
+
+  const Switch = ({
+    checked,
+    onChange,
+    label
+  }: {
+    checked: boolean
+    onChange: (next: boolean) => void
+    label: string
+  }) => (
+    <div style={styles.toggleRow}>
+      <span style={styles.toggleLabel}>{label}</span>
+      <div
+        role="switch"
+        aria-checked={checked}
+        style={switchStyles.track}
+        onClick={() => onChange(!checked)}
+      >
+        <div style={switchStyles.thumb(checked)} />
+      </div>
+    </div>
+  )
+
+  const ThemeSelector = () => {
+    return (
+      <div style={styles.toggleRow}>
+        <span style={styles.toggleLabel}>Theme</span>
+        <div style={{ display: "flex", gap: 6 }}>
+          {["system", "light", "dark"].map((value) => {
+            const active = settings.uiTheme === value
+            return (
+              <button
+                key={value}
+                type="button"
+                style={{
+                  padding: "6px 10px",
+                  borderRadius: 999,
+                  border: active
+                    ? "1px solid #38bdf8"
+                    : isDark
+                      ? "1px solid #334155"
+                      : "1px solid #cbd5f5",
+                  background: active
+                    ? "#38bdf8"
+                    : isDark
+                      ? "transparent"
+                      : "#ffffff",
+                  color: active ? "#0b1220" : isDark ? "#e2e8f0" : "#0f172a",
+                  fontSize: 11,
+                  textTransform: "capitalize",
+                  cursor: "pointer"
+                }}
+                onClick={() =>
+                  updateSettings({
+                    ...settings,
+                    uiTheme: value as "system" | "light" | "dark"
+                  })
+                }
+              >
+                {value}
+              </button>
+            )
+          })}
         </div>
-        <p style={{ fontSize: 12, color: "#555" }}>
-          These patterns will be replaced with {"<CUSTOM_#>"} before sending.
+      </div>
+    )
+  }
+
+  return (
+    <div style={styles.root}>
+      <div style={styles.header}>
+        <h3 style={styles.title}>VamiSec</h3>
+        <span style={styles.badge}>PII Redactor</span>
+      </div>
+
+      <div style={styles.card}>
+        <p
+          style={{
+            margin: "0 0 10px 0",
+            fontSize: 12,
+            color: isDark ? "#cbd5f5" : "#475569"
+          }}
+        >
+          Redact sensitive data before sending prompts.
         </p>
-      </section>
+
+        <Switch
+          label="Enable PII Redactor"
+          checked={settings.enablePiiRedactor}
+          onChange={(next) =>
+            updateSettings({
+              ...settings,
+              enablePiiRedactor: next
+            })
+          }
+        />
+        <ThemeSelector />
+
+        <div style={{ marginTop: 12 }}>
+          <h4 style={styles.sectionTitle}>Custom Patterns</h4>
+          <div style={styles.label}>Plain text patterns</div>
+          <textarea
+            rows={5}
+            style={styles.textarea}
+            placeholder={`client_secret\ninternal project`}
+            value={rawTextPatterns}
+            onChange={(event) => setRawTextPatterns(event.target.value)}
+          />
+          <div style={{ height: 8 }} />
+          <div style={styles.label}>Regex patterns</div>
+          <textarea
+            rows={5}
+            style={styles.textarea}
+            placeholder={`EMP-\\d{6}\nINV-\\d{4}-\\d{2}`}
+            value={rawRegexPatterns}
+            onChange={(event) => setRawRegexPatterns(event.target.value)}
+          />
+
+          <div style={{ ...styles.row, marginTop: 10 }}>
+            <button type="button" style={styles.buttonPrimary} onClick={savePatterns}>
+              Save patterns
+            </button>
+            <button type="button" style={styles.buttonGhost} onClick={onExport}>
+              Export
+            </button>
+            <label style={{ ...styles.buttonGhost, cursor: "pointer" }}>
+              Import
+              <input
+                type="file"
+                accept="application/json"
+                style={{ display: "none" }}
+                onChange={(event) => {
+                  const file = event.target.files?.[0]
+                  if (file) onImport(file)
+                  event.currentTarget.value = ""
+                }}
+              />
+            </label>
+          </div>
+          <p style={styles.helper}>
+            Matches replace with {"<CUSTOM_#>"} and appear as chips in the prompt UI.
+          </p>
+        </div>
+      </div>
     </div>
   )
 }
