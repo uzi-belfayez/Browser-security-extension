@@ -616,17 +616,15 @@ const positionControls = () => {
   if (!rect.width || !rect.height) return
 
   const margin = 8
-  const offset = 146
+  const rightOffset = 146
+  const topOffset = -40
   const top = Math.min(
     window.innerHeight - controls.offsetHeight - margin,
-    Math.max(
-      margin,
-      rect.top + rect.height / 2 - controls.offsetHeight / 2 - 40
-    )
+    Math.max(margin, rect.top + topOffset)
   )
   const left = Math.min(
     window.innerWidth - controls.offsetWidth - margin,
-    rect.right + margin + offset
+    rect.right + margin + rightOffset
   )
   controls.style.top = `${top}px`
   controls.style.left = `${left}px`
