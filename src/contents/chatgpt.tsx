@@ -504,12 +504,6 @@ const ensureControls = () => {
   restore.style.fontSize = "12px"
   restore.style.cursor = "pointer"
 
-  const status = document.createElement("span")
-  status.id = STATUS_ID
-  status.textContent = "Click to redact"
-  status.style.fontSize = "11px"
-  status.style.color = "#cbd5f5"
-
   const list = document.createElement("div")
   list.id = LIST_ID
 
@@ -601,7 +595,6 @@ const ensureControls = () => {
 
   row.appendChild(button)
   row.appendChild(restore)
-  row.appendChild(status)
   controls.appendChild(row)
   controls.appendChild(list)
   document.documentElement.appendChild(controls)
@@ -623,13 +616,17 @@ const positionControls = () => {
   if (!rect.width || !rect.height) return
 
   const margin = 8
+  const offset = 146
   const top = Math.min(
     window.innerHeight - controls.offsetHeight - margin,
-    Math.max(margin, rect.top + rect.height / 2 - controls.offsetHeight / 2)
+    Math.max(
+      margin,
+      rect.top + rect.height / 2 - controls.offsetHeight / 2 - 40
+    )
   )
   const left = Math.min(
     window.innerWidth - controls.offsetWidth - margin,
-    rect.right + margin
+    rect.right + margin + offset
   )
   controls.style.top = `${top}px`
   controls.style.left = `${left}px`
