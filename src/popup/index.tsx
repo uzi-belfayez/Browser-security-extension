@@ -270,7 +270,21 @@ export const Popup: React.FC = () => {
     return (
       <div style={styles.toggleRow}>
         <span style={styles.toggleLabel} title="Theme" aria-label="Theme">
-          🎨
+          <svg
+            width="16"
+            height="16"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="1.6"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            aria-hidden="true"
+          >
+            <circle cx="7" cy="7" r="2.8" />
+            <path d="M7 1.8v1.6M7 10.6v1.6M1.8 7h1.6M10.6 7h1.6M3.4 3.4l1.2 1.2M9.4 9.4l1.2 1.2M3.4 10.6l1.2-1.2M9.4 4.6l1.2-1.2" />
+            <path d="M18.5 6.2a5.6 5.6 0 1 0 0 11.2 6.8 6.8 0 0 1 0-11.2z" />
+          </svg>
         </span>
         <div style={{ display: "flex", gap: 6 }}>
           {["system", "light", "dark"].map((value) => {
