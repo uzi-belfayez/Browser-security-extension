@@ -3,6 +3,7 @@ export type RiskLevel = "green" | "yellow" | "red"
 export interface PhishingRequest {
   sender_email: string
   sender_name?: string
+  receiver_email?: string
   subject?: string
   body_text: string
 }
@@ -20,4 +21,6 @@ export interface Settings {
   customPatterns: string[]
   customRegexPatterns: string[]
   uiTheme: "light" | "dark" | "system"
+  apiBaseUrl: string
+  apiToken: string
 }

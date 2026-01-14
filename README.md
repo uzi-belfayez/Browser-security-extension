@@ -11,13 +11,15 @@ This is a [Plasmo extension](https://docs.plasmo.com/) project bootstrapped with
   - Status text + chips list of placeholders used.
 - Robust prompt detection for ChatGPT ProseMirror input (`#prompt-textarea`).
 
-#### Custom Patterns (Feature 5)
+#### Custom Patterns
 - Two lists in the popup:
   - Plain text patterns (exact match).
   - Regex patterns (regular expressions).
 - All matches are replaced with `<CUSTOM_#>`.
 - Patterns are stored in `chrome.storage.local` (requires `storage` permission).
 - Popup has a "Save patterns" button to persist entries.
+- Export/Import patterns as JSON from the popup.
+- Popup has Light/Dark/System theme support and a PII Redactor toggle.
 
 ### Feature B - Prompt Firewall (planned)
 - Local checks against banned intents/keywords before send.
@@ -25,33 +27,66 @@ This is a [Plasmo extension](https://docs.plasmo.com/) project bootstrapped with
 ### Feature C - Phishing Radar (planned)
 - Gmail sender/body extraction + backend risk banner.
 
-## Getting Started
+## Install & Run (Local Development)
 
-First, run the development server:
+### Requirements
+- Node.js 18+ (recommended)
+- npm or pnpm
+- Google Chrome (or Chromium-based browser)
 
+### Setup
+1) Clone the repo:
 ```bash
-pnpm dev
+git clone <your-repo-url>
+cd browser_extension
+```
+
+2) Install dependencies:
+```bash
+npm install
 # or
+pnpm install
+```
+
+3) Start the dev server (Plasmo):
+```bash
 npm run dev
-```
-
-Open your browser and load the appropriate development build. For example, if you are developing for the chrome browser, using manifest v3, use: `build/chrome-mv3-dev`.
-
-You can start editing the popup by modifying `popup.tsx`. It should auto-update as you make changes. To add an options page, simply add a `options.tsx` file to the root of the project, with a react component default exported. Likewise to add a content page, add a `content.ts` file to the root of the project, importing some module and do some logic, then reload the extension on your browser.
-
-For further guidance, [visit our Documentation](https://docs.plasmo.com/)
-
-## Making production build
-
-Run the following:
-
-```bash
-pnpm build
 # or
-npm run build
+pnpm dev
 ```
 
-This should create a production bundle for your extension, ready to be zipped and published to the stores.
+### Load the Extension in Chrome
+1) Open Chrome and go to `chrome://extensions`.
+2) Enable **Developer mode** (top-right).
+3) Click **Load unpacked**.
+4) Select the folder: `build/chrome-mv3-dev`.
+5) The extension will appear in the toolbar. Pin it for easy access.
+
+When you make changes:
+- Keep `npm run dev` running.
+- Click **Reload** on the extension card in `chrome://extensions`.
+- Hard-refresh ChatGPT (Ctrl+Shift+R).
+
+### Usage (Quick Start)
+1) Open ChatGPT at `https://chatgpt.com/`.
+2) Use the popup to:
+   - Toggle PII Redactor on/off.
+   - Add custom patterns (plain text + regex).
+   - Save / Export / Import patterns.
+   - Pick Light/Dark/System theme.
+3) In ChatGPT, use the on-page controls:
+   - **Redact PII** to replace sensitive items.
+   - **Restore** to revert if not edited after redaction.
+
+## Project Structure (Key Files)
+- `src/contents/chatgpt.tsx` — PII redaction logic + on-page controls.
+- `src/popup/index.tsx` — extension popup UI and settings.
+- `src/shared/storage.ts` — settings persistence (`chrome.storage.local`).
+- `src/shared/types.ts` — shared settings types.
+
+## Notes
+- Credit cards are validated with Luhn to reduce false positives.
+- Phone detection supports international formats with spaces and separators.
 
 ## Submit to the webstores
 

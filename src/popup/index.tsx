@@ -101,9 +101,10 @@ export const Popup: React.FC = () => {
     },
     header: {
       display: "flex",
-      alignItems: "center",
+      alignItems: "flex-start",
       justifyContent: "space-between",
-      marginBottom: 12
+      marginBottom: 12,
+      gap: 8
     },
     title: {
       fontSize: 18,
@@ -118,6 +119,17 @@ export const Popup: React.FC = () => {
       background: isDark ? "#111827" : "#e2e8f0",
       color: isDark ? "#cbd5f5" : "#0f172a",
       textTransform: "uppercase"
+    },
+    cardStack: {
+      display: "flex",
+      flexDirection: "column" as const,
+      gap: 12
+    },
+    headerMeta: {
+      display: "flex",
+      flexDirection: "column" as const,
+      alignItems: "flex-end",
+      gap: 6
     },
     card: {
       background: isDark
@@ -154,6 +166,16 @@ export const Popup: React.FC = () => {
       fontFamily: '"JetBrains Mono", "Fira Code", "SFMono-Regular", monospace',
       fontSize: 12,
       lineHeight: 1.4
+    },
+    input: {
+      width: "100%",
+      borderRadius: 8,
+      border: isDark ? "1px solid #293548" : "1px solid #cbd5f5",
+      background: isDark ? "#0b1220" : "#ffffff",
+      color: isDark ? "#e2e8f0" : "#0f172a",
+      padding: "8px 10px",
+      fontFamily: '"JetBrains Mono", "Fira Code", "SFMono-Regular", monospace',
+      fontSize: 12
     },
     buttonPrimary: {
       padding: "8px 12px",
@@ -293,75 +315,105 @@ export const Popup: React.FC = () => {
     <div style={styles.root}>
       <div style={styles.header}>
         <h3 style={styles.title}>VamiSec</h3>
-        <span style={styles.badge}>PII Redactor</span>
+        <div style={styles.headerMeta}>
+          <ThemeSelector />
+        </div>
       </div>
 
-      <div style={styles.card}>
-        <p
-          style={{
-            margin: "0 0 10px 0",
-            fontSize: 12,
-            color: isDark ? "#cbd5f5" : "#475569"
-          }}
-        >
-          Redact sensitive data before sending prompts.
-        </p>
-
-        <Switch
-          label="Enable PII Redactor"
-          checked={settings.enablePiiRedactor}
-          onChange={(next) =>
-            updateSettings({
-              ...settings,
-              enablePiiRedactor: next
-            })
-          }
-        />
-        <ThemeSelector />
-
-        <div style={{ marginTop: 12 }}>
-          <h4 style={styles.sectionTitle}>Custom Patterns</h4>
-          <div style={styles.label}>Plain text patterns</div>
-          <textarea
-            rows={5}
-            style={styles.textarea}
-            placeholder={`client_secret\ninternal project`}
-            value={rawTextPatterns}
-            onChange={(event) => setRawTextPatterns(event.target.value)}
-          />
-          <div style={{ height: 8 }} />
-          <div style={styles.label}>Regex patterns</div>
-          <textarea
-            rows={5}
-            style={styles.textarea}
-            placeholder={`EMP-\\d{6}\nINV-\\d{4}-\\d{2}`}
-            value={rawRegexPatterns}
-            onChange={(event) => setRawRegexPatterns(event.target.value)}
-          />
-
-          <div style={{ ...styles.row, marginTop: 10 }}>
-            <button type="button" style={styles.buttonPrimary} onClick={savePatterns}>
-              Save patterns
-            </button>
-            <button type="button" style={styles.buttonGhost} onClick={onExport}>
-              Export
-            </button>
-            <label style={{ ...styles.buttonGhost, cursor: "pointer" }}>
-              Import
-              <input
-                type="file"
-                accept="application/json"
-                style={{ display: "none" }}
-                onChange={(event) => {
-                  const file = event.target.files?.[0]
-                  if (file) onImport(file)
-                  event.currentTarget.value = ""
-                }}
-              />
-            </label>
+      <div style={styles.cardStack}>
+        <div style={styles.card}>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+            <h4 style={styles.sectionTitle}>PII Redactor</h4>
+            <span style={styles.badge}>PII Redactor</span>
           </div>
+          <p
+            style={{
+              margin: "0 0 10px 0",
+              fontSize: 12,
+              color: isDark ? "#cbd5f5" : "#475569"
+            }}
+          >
+            Redact sensitive data before sending prompts.
+          </p>
+
+          <Switch
+            label="Enable PII Redactor"
+            checked={settings.enablePiiRedactor}
+            onChange={(next) =>
+              updateSettings({
+                ...settings,
+                enablePiiRedactor: next
+              })
+            }
+          />
+
+          <div style={{ marginTop: 12 }}>
+            <h4 style={styles.sectionTitle}>Custom Patterns</h4>
+            <div style={styles.label}>Plain text patterns</div>
+            <textarea
+              rows={5}
+              style={styles.textarea}
+              placeholder={`client_secret\ninternal project`}
+              value={rawTextPatterns}
+              onChange={(event) => setRawTextPatterns(event.target.value)}
+            />
+            <div style={{ height: 8 }} />
+            <div style={styles.label}>Regex patterns</div>
+            <textarea
+              rows={5}
+              style={styles.textarea}
+              placeholder={`EMP-\\d{6}\nINV-\\d{4}-\\d{2}`}
+              value={rawRegexPatterns}
+              onChange={(event) => setRawRegexPatterns(event.target.value)}
+            />
+
+            <div style={{ ...styles.row, marginTop: 10 }}>
+              <button type="button" style={styles.buttonPrimary} onClick={savePatterns}>
+                Save patterns
+              </button>
+              <button type="button" style={styles.buttonGhost} onClick={onExport}>
+                Export
+              </button>
+              <label style={{ ...styles.buttonGhost, cursor: "pointer" }}>
+                Import
+                <input
+                  type="file"
+                  accept="application/json"
+                  style={{ display: "none" }}
+                  onChange={(event) => {
+                    const file = event.target.files?.[0]
+                    if (file) onImport(file)
+                    event.currentTarget.value = ""
+                  }}
+                />
+              </label>
+            </div>
+            <p style={styles.helper}>
+              Matches replace with {"<CUSTOM_#>"} and appear as chips in the prompt UI.
+            </p>
+          </div>
+        </div>
+
+        <div style={styles.card}>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+            <h4 style={styles.sectionTitle}>Phishing Radar</h4>
+            <span style={styles.badge}>Phishing Radar</span>
+          </div>
+          <Switch
+            label="Enable Phishing Radar"
+            checked={settings.enablePhishingRadar}
+            onChange={(next) =>
+              updateSettings({
+                ...settings,
+                enablePhishingRadar: next
+              })
+            }
+          />
           <p style={styles.helper}>
-            Matches replace with {"<CUSTOM_#>"} and appear as chips in the prompt UI.
+            API configuration comes from `.env` (no popup settings required).
+          </p>
+          <p style={styles.helper}>
+            Radar calls your backend with sender, recipient, and body text to score risk.
           </p>
         </div>
       </div>

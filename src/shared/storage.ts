@@ -5,7 +5,9 @@ export const defaultSettings: Settings = {
   enablePhishingRadar: true,
   customPatterns: [],
   customRegexPatterns: [],
-  uiTheme: "system"
+  uiTheme: "system",
+  apiBaseUrl: "",
+  apiToken: ""
 }
 
 export const settingsStore = {
