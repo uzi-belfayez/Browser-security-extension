@@ -269,7 +269,9 @@ export const Popup: React.FC = () => {
   const ThemeSelector = () => {
     return (
       <div style={styles.toggleRow}>
-        <span style={styles.toggleLabel}>Theme</span>
+        <span style={styles.toggleLabel} title="Theme" aria-label="Theme">
+          🎨
+        </span>
         <div style={{ display: "flex", gap: 6 }}>
           {["system", "light", "dark"].map((value) => {
             const active = settings.uiTheme === value
