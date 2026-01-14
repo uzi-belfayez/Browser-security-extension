@@ -943,7 +943,13 @@ dependencies = [
     { name = "fastapi" },
     { name = "httpx" },
     { name = "python-dotenv" },
-    { name = "uvicorn" },
+    { name = "uvicorn", extra = ["standard"] },
+]
+
+[package.dev-dependencies]
+dev = [
+    { name = "fastapi" },
+    { name = "uvicorn", extra = ["standard"] },
 ]
 
 [package.metadata]
@@ -951,11 +957,14 @@ requires-dist = [
     { name = "fastapi", specifier = "==0.111.0" },
     { name = "httpx", specifier = "==0.27.0" },
     { name = "python-dotenv", specifier = "==1.0.1" },
-    { name = "uvicorn", specifier = "==0.30.1" },
+    { name = "uvicorn", extras = ["standard"], specifier = "==0.30.1" },
 ]
 
 [package.metadata.requires-dev]
-dev = []
+dev = [
+    { name = "fastapi" },
+    { name = "uvicorn", extras = ["standard"] },
+]
 
 [[package]]
 name = "watchfiles"

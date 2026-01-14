@@ -1,4 +1,4 @@
-#!/home/rayen/vamisec/backend/.venv/bin/python3
+#!/home/rayen/vamisec/browser_extension/backend/.venv/bin/python
 # -*- coding: utf-8 -*-
 import sys
 from uvicorn.main import main

@@ -22,6 +22,19 @@ export const Popup: React.FC = () => {
       })
   }, [])
 
+  useEffect(() => {
+    if (typeof document === "undefined") return
+    const prefersDark =
+      window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches
+    const dark = settings.uiTheme === "dark" || (settings.uiTheme === "system" && prefersDark)
+    const background = dark
+      ? "radial-gradient(120% 90% at 0% 0%, #1e293b 0%, #0b1220 50%, #0a0f1a 100%)"
+      : "radial-gradient(120% 90% at 0% 0%, #f8fafc 0%, #eef2f7 50%, #e2e8f0 100%)"
+    document.documentElement.style.background = background
+    document.body.style.background = background
+    document.body.style.margin = "0"
+  }, [settings.uiTheme])
+
   const updateSettings = (next: Settings) => {
     setSettings(next)
     settingsStore.set(next).catch(() => null)
@@ -133,9 +146,9 @@ export const Popup: React.FC = () => {
     },
     card: {
       background: isDark
-        ? "linear-gradient(180deg, #0f172a 0%, #0b1220 100%)"
+        ? "linear-gradient(180deg, rgba(15, 23, 42, 0.95) 0%, rgba(11, 18, 32, 0.95) 100%)"
         : "linear-gradient(180deg, #ffffff 0%, #f1f5f9 100%)",
-      border: isDark ? "1px solid #1f2a44" : "1px solid #d8e1ec",
+      border: isDark ? "1px solid rgba(148, 163, 184, 0.18)" : "1px solid #d8e1ec",
       borderRadius: 12,
       padding: 12,
       boxShadow: isDark

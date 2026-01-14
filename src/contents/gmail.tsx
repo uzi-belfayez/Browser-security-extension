@@ -103,6 +103,10 @@ const ensureStyles = () => {
       display: flex;
       flex-direction: column;
       gap: 6px;
+      box-shadow: 0 12px 24px rgba(2, 6, 23, 0.18);
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
+      overflow: hidden;
     }
     #${BANNER_ID} .vamisec-row {
       display: flex;
@@ -120,6 +124,14 @@ const ensureStyles = () => {
       padding: 2px 8px;
       border-radius: 999px;
       border: 1px solid rgba(15, 23, 42, 0.2);
+    }
+    #${BANNER_ID} .vamisec-summary {
+      color: inherit;
+      opacity: 0.9;
+    }
+    #${BANNER_ID} .vamisec-rationale {
+      font-size: 11px;
+      opacity: 0.85;
     }
     #${BANNER_ID} .vamisec-signals {
       display: flex;
@@ -162,10 +174,82 @@ const ensureBanner = () => {
   return banner
 }
 
-const riskColors: Record<RiskLevel, { bg: string; text: string; border: string }> = {
-  green: { bg: "#ecfdf3", text: "#166534", border: "#86efac" },
-  yellow: { bg: "#fff7ed", text: "#92400e", border: "#fdba74" },
-  red: { bg: "#fef2f2", text: "#b91c1c", border: "#fecaca" }
+const riskColorsLight: Record<
+  RiskLevel,
+  { bg: string; text: string; border: string; pillBg: string; pillText: string; chipBg: string }
+> = {
+  green: {
+    bg: "#ecfdf3",
+    text: "#166534",
+    border: "#86efac",
+    pillBg: "#bbf7d0",
+    pillText: "#14532d",
+    chipBg: "rgba(22, 101, 52, 0.08)"
+  },
+  yellow: {
+    bg: "#fff7ed",
+    text: "#92400e",
+    border: "#fdba74",
+    pillBg: "#fed7aa",
+    pillText: "#7c2d12",
+    chipBg: "rgba(146, 64, 14, 0.08)"
+  },
+  red: {
+    bg: "#fef2f2",
+    text: "#b91c1c",
+    border: "#fecaca",
+    pillBg: "#fecaca",
+    pillText: "#7f1d1d",
+    chipBg: "rgba(185, 28, 28, 0.08)"
+  }
+}
+
+const riskColorsDark: Record<
+  RiskLevel,
+  { bg: string; text: string; border: string; pillBg: string; pillText: string; chipBg: string }
+> = {
+  green: {
+    bg: "rgba(15, 23, 42, 0.86)",
+    text: "#e2e8f0",
+    border: "rgba(148, 163, 184, 0.2)",
+    pillBg: "rgba(34, 197, 94, 0.25)",
+    pillText: "#bbf7d0",
+    chipBg: "rgba(34, 197, 94, 0.18)"
+  },
+  yellow: {
+    bg: "rgba(15, 23, 42, 0.86)",
+    text: "#e2e8f0",
+    border: "rgba(148, 163, 184, 0.2)",
+    pillBg: "rgba(251, 191, 36, 0.25)",
+    pillText: "#fde68a",
+    chipBg: "rgba(251, 191, 36, 0.18)"
+  },
+  red: {
+    bg: "rgba(15, 23, 42, 0.86)",
+    text: "#e2e8f0",
+    border: "rgba(148, 163, 184, 0.2)",
+    pillBg: "rgba(239, 68, 68, 0.25)",
+    pillText: "#fecaca",
+    chipBg: "rgba(239, 68, 68, 0.18)"
+  }
+}
+
+const parseRgb = (value: string) => {
+  const match = value.match(/rgba?\((\d+),\s*(\d+),\s*(\d+)/i)
+  if (!match) return null
+  return { r: Number(match[1]), g: Number(match[2]), b: Number(match[3]) }
+}
+
+const isDarkSurface = () => {
+  if (typeof window === "undefined") return false
+  const main = document.querySelector("div[role='main']")
+  const target = main || document.body
+  if (!target) return false
+  const style = window.getComputedStyle(target)
+  const bg = parseRgb(style.backgroundColor || "")
+  if (!bg) return false
+  const luminance = 0.2126 * bg.r + 0.7152 * bg.g + 0.0722 * bg.b
+  return luminance < 128
 }
 
 const renderBanner = (state: {
@@ -181,22 +265,31 @@ const renderBanner = (state: {
     return
   }
 
+  const dark = isDarkSurface()
+  const loadingBg = dark ? "rgba(15, 23, 42, 0.82)" : "#f8fafc"
+  const loadingText = dark ? "#e2e8f0" : "#0f172a"
+  const loadingBorder = dark ? "rgba(148, 163, 184, 0.2)" : "rgba(15, 23, 42, 0.12)"
+
   if (state.status === "loading") {
-    banner.style.background = "#f8fafc"
-    banner.style.color = "#0f172a"
+    banner.style.background = loadingBg
+    banner.style.color = loadingText
+    banner.style.border = `1px solid ${loadingBorder}`
     banner.innerHTML = `<div class="vamisec-row"><div class="vamisec-title">VamiSec Phishing Radar</div><div class="vamisec-score">Analyzing...</div></div>`
     return
   }
 
   if (state.status === "error") {
-    banner.style.background = "#f8fafc"
-    banner.style.color = "#0f172a"
+    banner.style.background = loadingBg
+    banner.style.color = loadingText
+    banner.style.border = `1px solid ${loadingBorder}`
     banner.innerHTML = `<div class="vamisec-row"><div class="vamisec-title">VamiSec Phishing Radar</div><div class="vamisec-score">Error</div></div><div>${state.message || "Analysis failed."}</div>`
     return
   }
 
   if (state.status === "done" && state.data) {
-    const { bg, text, border } = riskColors[state.data.risk] || riskColors.green
+    const palette = dark ? riskColorsDark : riskColorsLight
+    const { bg, text, border, pillBg, pillText, chipBg } =
+      palette[state.data.risk] || palette.green
     banner.style.background = bg
     banner.style.color = text
     banner.style.border = `1px solid ${border}`
@@ -205,20 +298,29 @@ const renderBanner = (state: {
       const scaled = state.data.score > 1 ? state.data.score : state.data.score * 100
       scoreText = `Score ${Math.round(scaled)}`
     }
-    const summary = state.data.summary ? state.data.summary.slice(0, 220) : ""
+    const rawSummary = state.data.summary ? state.data.summary.slice(0, 220) : ""
+    const summary = rawSummary.replace(/^signals detected:\s*/i, "Summary: ")
     const signals = (state.data.signals || []).slice(0, 5)
+    const rationale =
+      signals.length > 0
+        ? `Why it looks suspicious: ${signals.length} indicator${signals.length > 1 ? "s" : ""} flagged.`
+        : "Why it looks safe: no indicators flagged."
 
     banner.innerHTML = `
       <div class="vamisec-row">
         <div class="vamisec-title">VamiSec Phishing Radar</div>
-        <div class="vamisec-score">${scoreText}</div>
+        <div class="vamisec-score" style="background:${pillBg};color:${pillText};border-color:${border}">${scoreText}</div>
         <button type="button" class="vamisec-dismiss" data-action="dismiss">Dismiss</button>
       </div>
-      <div>${summary}</div>
+      <div class="vamisec-summary">${summary}</div>
+      <div class="vamisec-rationale">${rationale}</div>
       ${
         signals.length
           ? `<div class="vamisec-signals">${signals
-              .map((signal) => `<span class="vamisec-chip">${signal}</span>`)
+              .map(
+                (signal) =>
+                  `<span class="vamisec-chip" style="background:${chipBg}">${signal}</span>`
+              )
               .join("")}</div>`
           : ""
       }
