@@ -100,7 +100,6 @@ Chrome Native Messaging. This avoids running a web server, opens no ports, and
 feels safe to non-technical users.
 
 ### Why Native Messaging
-- No `localhost` web server.
 - No open ports or network exposure.
 - The helper is launched automatically by Chrome when the extension needs it.
 - Clear security story: local-only, offline, and auditable.

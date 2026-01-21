@@ -767,7 +767,7 @@ const renderBanner = (state: {
     banner.style.background = loadingBg
     banner.style.color = loadingText
     banner.style.border = `1px solid ${loadingBorder}`
-    banner.innerHTML = `<div class="vamisec-row"><div class="vamisec-title">VamiSec Phishing Radar</div><div class="vamisec-score">Analyzing...</div></div>`
+    banner.innerHTML = `<div class="vamisec-row"><div class="vamisec-title">VamiGuard Phishing Radar</div><div class="vamisec-score">Analyzing...</div></div>`
     return
   }
 
@@ -775,7 +775,7 @@ const renderBanner = (state: {
     banner.style.background = loadingBg
     banner.style.color = loadingText
     banner.style.border = `1px solid ${loadingBorder}`
-    banner.innerHTML = `<div class="vamisec-row"><div class="vamisec-title">VamiSec Phishing Radar</div><div class="vamisec-score">Error</div></div><div>${state.message || "Analysis failed."}</div>`
+    banner.innerHTML = `<div class="vamisec-row"><div class="vamisec-title">VamiGuard Phishing Radar</div><div class="vamisec-score">Error</div></div><div>${state.message || "Analysis failed."}</div>`
     return
   }
 
@@ -809,7 +809,7 @@ const renderBanner = (state: {
 
     banner.innerHTML = `
       <div class="vamisec-row">
-        <div class="vamisec-title">VamiSec Phishing Radar</div>
+        <div class="vamisec-title">VamiGuard Phishing Radar</div>
         <div class="vamisec-score" style="background:${pillBg};color:${pillText};border-color:${border}">${scoreText}</div>
         <button type="button" class="vamisec-headers" data-action="headers">Check headers</button>
       </div>

@@ -290,7 +290,7 @@ const ensureBadge = () => {
     return
   }
   const badge = document.createElement("div")
-  badge.textContent = "VamiSec ready"
+  badge.textContent = "VamiGuard ready"
   badge.style.position = "fixed"
   badge.style.bottom = "16px"
   badge.style.right = "16px"

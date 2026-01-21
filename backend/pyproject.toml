@@ -1,7 +1,7 @@
 [project]
 name = "vamisec-phishing-backend"
 version = "0.1.0"
-description = "FastAPI backend for VamiSec Phishing Radar."
+description = "FastAPI backend for VamiGuard Phishing Radar."
 requires-python = ">=3.10"
 dependencies = [
   "fastapi==0.111.0",
@@ -15,4 +15,3 @@ dev-dependencies = [
   "fastapi",
   "uvicorn[standard]",
 ]
-

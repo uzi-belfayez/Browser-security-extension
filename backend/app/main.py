@@ -36,7 +36,7 @@ class PhishingResponse(BaseModel):
     signals: List[str] = []
 
 
-app = FastAPI(title="VamiSec Phishing Radar API", version="0.1.0")
+app = FastAPI(title="VamiGuard Phishing Radar API", version="0.1.0")
 
 
 def _text(payload: PhishingRequest) -> str:

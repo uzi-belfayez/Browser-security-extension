@@ -100,7 +100,7 @@ export const Popup: React.FC = () => {
     const url = URL.createObjectURL(blob)
     const link = document.createElement("a")
     link.href = url
-    link.download = "vamisec-patterns.json"
+    link.download = "vamiguard-patterns.json"
     link.click()
     URL.revokeObjectURL(url)
   }
@@ -375,7 +375,7 @@ export const Popup: React.FC = () => {
   return (
     <div style={styles.root}>
       <div style={styles.header}>
-        <h3 style={styles.title}>VamiSec</h3>
+        <h3 style={styles.title}>VamiGuard</h3>
         <div style={styles.headerMeta}>
           <ThemeSelector />
         </div>

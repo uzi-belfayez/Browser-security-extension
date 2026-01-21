@@ -1,4 +1,4 @@
-# VamiSec Phishing Radar Backend (FastAPI)
+# VamiGuard Phishing Radar Backend (FastAPI)
 
 ## Setup
 ```bash
@@ -22,7 +22,6 @@ Required:
 ```
 OPENAI_API_KEY=...
 GEMINI_API_KEY=...
-PHISHING_API_BASE_URL=http://localhost:8000
 ```
 
 Optional:
@@ -35,7 +34,7 @@ GEMINI_BASE_URL=https://generativelanguage.googleapis.com/v1beta
 
 ## Run
 ```bash
-uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
+uvicorn app.main:app --reload --port 8000
 ```
 
 ## Endpoint
