@@ -812,12 +812,6 @@ const renderBanner = (state: {
         <div class="vamisec-title">VamiSec Phishing Radar</div>
         <div class="vamisec-score" style="background:${pillBg};color:${pillText};border-color:${border}">${scoreText}</div>
         <button type="button" class="vamisec-headers" data-action="headers">Check headers</button>
-        <button type="button" class="vamisec-dismiss" data-action="dismiss" aria-label="Dismiss">
-          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round">
-            <circle cx="12" cy="12" r="8"></circle>
-            <line x1="8" y1="8" x2="16" y2="16"></line>
-          </svg>
-        </button>
       </div>
       <div class="vamisec-rationale">${rationale}</div>
       ${
