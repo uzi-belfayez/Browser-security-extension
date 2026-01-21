@@ -10,6 +10,7 @@ export const config: PlasmoCSConfig = {
 const BANNER_ID = "vamisec-phish-banner"
 const STYLE_ID = "vamisec-phish-style"
 const HEADER_RESULT_KEY = "vamisec_header_result"
+const HEADER_PENDING_KEY = "vamisec_header_pending"
 let lastFingerprint = ""
 let radarEnabled = true
 let analyzeTimer: number | null = null
@@ -73,12 +74,6 @@ const getPermMsgIdFromUrl = () => {
   if (typeof window === "undefined") return ""
   const url = new URL(window.location.href)
   return url.searchParams.get("permmsgid") || ""
-}
-
-const getLegacyKeyFromUrl = () => {
-  if (typeof window === "undefined") return ""
-  const url = new URL(window.location.href)
-  return url.searchParams.get("vmsKey") || ""
 }
 
 const toPermMsgId = (value: string) => {
@@ -230,14 +225,10 @@ const buildShowOriginalUrl = async (): Promise<{
       "a[href*='view=om'][href*='permmsgid='], a[href*='view=om'][href*='th=']"
     ) as HTMLAnchorElement | null
     if (existing?.href) {
-      try {
-        const url = new URL(existing.href)
-        if (currentLegacyMessageId) {
-          url.searchParams.set("vmsKey", currentLegacyMessageId)
-        }
-        return { url: url.toString(), messageKey: getMessageKeyFromUrl(existing.href), legacyKey: currentLegacyMessageId }
-      } catch {
-        return { url: existing.href, messageKey: getMessageKeyFromUrl(existing.href), legacyKey: currentLegacyMessageId }
+      return {
+        url: existing.href,
+        messageKey: getMessageKeyFromUrl(existing.href),
+        legacyKey: currentLegacyMessageId
       }
     }
   }
@@ -261,13 +252,10 @@ const buildShowOriginalUrl = async (): Promise<{
   if (ik && /^[a-z0-9]+$/i.test(ik)) {
     parts.push(`ik=${ik}`)
   }
-  if (currentLegacyMessageId) {
-    parts.push(`vmsKey=${currentLegacyMessageId}`)
-  }
   return { url: `${origin}${accountBase}?${parts.join("&")}`, messageKey, legacyKey: currentLegacyMessageId }
 }
 
-const parseHeaderResult = (text: string): HeaderResult | null => {
+const parseHeaderResult = async (text: string): Promise<HeaderResult | null> => {
   const lower = text.toLowerCase()
   const authMatch = lower.match(/authentication-results:[\s\S]*?(?:\n\S|$)/i)
   const authText = authMatch ? authMatch[0] : ""
@@ -281,8 +269,17 @@ const parseHeaderResult = (text: string): HeaderResult | null => {
     authText.match(/dmarc=(pass|fail|bestguesspass|none|temperror|permerror)/i)?.[1] ||
     ""
   const messageKey = normalizeMessageKey(getPermMsgIdFromUrl() || getThreadIdFromUrl())
-  const legacyKey = getLegacyKeyFromUrl()
   if (!messageKey) return null
+  let legacyKey = ""
+  try {
+    const pending = await chrome.storage.local.get([HEADER_PENDING_KEY])
+    if (pending?.[HEADER_PENDING_KEY]?.legacyKey) {
+      legacyKey = String(pending[HEADER_PENDING_KEY].legacyKey)
+      await chrome.storage.local.remove([HEADER_PENDING_KEY])
+    }
+  } catch {
+    legacyKey = ""
+  }
   return {
     messageKey,
     timestamp: Date.now(),
@@ -296,14 +293,17 @@ const parseHeaderResult = (text: string): HeaderResult | null => {
 const handleShowOriginalPage = async () => {
   if (typeof document === "undefined" || typeof chrome === "undefined") return
   const text = document.body?.innerText || ""
-  const result = parseHeaderResult(text)
+  const result = await parseHeaderResult(text)
   if (!result?.messageKey) return
   try {
     await chrome.storage.local.set({ [HEADER_RESULT_KEY]: result })
   } catch {
     return
   }
-  window.close()
+  const url = new URL(window.location.href)
+  if (url.searchParams.get("vamisecDebug") !== "1") {
+    window.close()
+  }
 }
 
 const editDistance = (a: string, b: string) => {
@@ -868,8 +868,15 @@ const renderBanner = (state: {
         if (result.messageKey) {
           lastHeaderRequestKey = result.messageKey
         }
-        if (result.legacyKey) {
+        if (result.legacyKey && typeof chrome !== "undefined") {
           currentLegacyMessageId = result.legacyKey
+          try {
+            await chrome.storage.local.set({
+              [HEADER_PENDING_KEY]: { legacyKey: result.legacyKey, timestamp: Date.now() }
+            })
+          } catch {
+            // ignore
+          }
         }
         window.open(result.url, "_blank", "noopener")
       }
@@ -974,6 +981,9 @@ const loadHeaderResult = async () => {
   const data = await chrome.storage.local.get([HEADER_RESULT_KEY])
   const result = data?.[HEADER_RESULT_KEY] as HeaderResult | undefined
   headerResult = result && result.messageKey ? result : null
+  if (headerResult) {
+    lastResult = null
+  }
 }
 
 const init = () => {
@@ -1005,6 +1015,9 @@ const init = () => {
       if (changes[HEADER_RESULT_KEY]) {
         const next = changes[HEADER_RESULT_KEY].newValue as HeaderResult | undefined
         headerResult = next && next.messageKey ? next : null
+        if (headerResult) {
+          lastResult = null
+        }
       }
       scheduleAnalysis()
     })
