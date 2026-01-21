@@ -27,10 +27,19 @@
     "permissions": [
       "storage"
     ],
+    "web_accessible_resources": [
+      {
+        "resources": [
+          "assets/gmail-ik.js"
+        ],
+        "matches": [
+          "https://mail.google.com/*"
+        ]
+      }
+    ],
     "host_permissions": [
-      "https://*/*",
-      "http://localhost/*",
-      "http://127.0.0.1/*"
+      "https://chatgpt.com/*",
+      "https://mail.google.com/*"
     ]
   }
 }

@@ -13,6 +13,11 @@ export interface PhishingResponse {
   score: number
   summary: string
   signals?: string[]
+  checks?: Array<{
+    label: string
+    status: "pass" | "fail" | "info"
+    detail?: string
+  }>
 }
 
 export interface Settings {
@@ -20,6 +25,9 @@ export interface Settings {
   enablePhishingRadar: boolean
   customPatterns: string[]
   customRegexPatterns: string[]
+  trustedSenders: string[]
+  trustedDomains: string[]
+  trustedNames: string[]
   uiTheme: "light" | "dark" | "system"
   apiBaseUrl: string
   apiToken: string

@@ -5,6 +5,9 @@ export const defaultSettings: Settings = {
   enablePhishingRadar: true,
   customPatterns: [],
   customRegexPatterns: [],
+  trustedSenders: [],
+  trustedDomains: [],
+  trustedNames: [],
   uiTheme: "system",
   apiBaseUrl: "",
   apiToken: ""

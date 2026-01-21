@@ -6,6 +6,9 @@ export const Popup: React.FC = () => {
   const [settings, setSettings] = useState<Settings>(defaultSettings)
   const [rawTextPatterns, setRawTextPatterns] = useState("")
   const [rawRegexPatterns, setRawRegexPatterns] = useState("")
+  const [rawTrustedSenders, setRawTrustedSenders] = useState("")
+  const [rawTrustedDomains, setRawTrustedDomains] = useState("")
+  const [rawTrustedNames, setRawTrustedNames] = useState("")
 
   useEffect(() => {
     settingsStore
@@ -14,11 +17,17 @@ export const Popup: React.FC = () => {
         setSettings(loaded)
         setRawTextPatterns(loaded.customPatterns.join("\n"))
         setRawRegexPatterns(loaded.customRegexPatterns.join("\n"))
+        setRawTrustedSenders(loaded.trustedSenders.join("\n"))
+        setRawTrustedDomains(loaded.trustedDomains.join("\n"))
+        setRawTrustedNames(loaded.trustedNames.join("\n"))
       })
       .catch(() => {
         setSettings(defaultSettings)
         setRawTextPatterns("")
         setRawRegexPatterns("")
+        setRawTrustedSenders("")
+        setRawTrustedDomains("")
+        setRawTrustedNames("")
       })
   }, [])
 
@@ -54,6 +63,29 @@ export const Popup: React.FC = () => {
       customPatterns: patterns,
       customRegexPatterns: regexPatterns
     })
+  }
+
+  const saveTrustedLists = () => {
+    updateSettings({
+      ...settings,
+      trustedSenders: splitPatterns(rawTrustedSenders),
+      trustedDomains: splitPatterns(rawTrustedDomains),
+      trustedNames: splitPatterns(rawTrustedNames)
+    })
+  }
+
+  const importTrustedSenders = (file: File) => {
+    const reader = new FileReader()
+    reader.onload = () => {
+      const content = String(reader.result || "")
+      const nextSenders = splitPatterns(content)
+      updateSettings({
+        ...settings,
+        trustedSenders: nextSenders
+      })
+      setRawTrustedSenders(nextSenders.join("\n"))
+    }
+    reader.readAsText(file)
   }
 
 
@@ -438,11 +470,61 @@ export const Popup: React.FC = () => {
               })
             }
           />
+          <div style={{ marginTop: 12 }}>
+            <h4 style={styles.sectionTitle}>Trusted List</h4>
+            <div style={styles.label}>Trusted sender emails</div>
+            <textarea
+              rows={4}
+              style={styles.textarea}
+              placeholder={`ceo@company.com\nfinance@company.com`}
+              value={rawTrustedSenders}
+              onChange={(event) => setRawTrustedSenders(event.target.value)}
+            />
+            <div style={{ height: 8 }} />
+            <div style={styles.label}>Trusted domains</div>
+            <textarea
+              rows={3}
+              style={styles.textarea}
+              placeholder={`company.com\npartner.org`}
+              value={rawTrustedDomains}
+              onChange={(event) => setRawTrustedDomains(event.target.value)}
+            />
+            <div style={{ height: 8 }} />
+            <div style={styles.label}>Employee display names</div>
+            <textarea
+              rows={3}
+              style={styles.textarea}
+              placeholder={`Jane Doe\nJohn Smith`}
+              value={rawTrustedNames}
+              onChange={(event) => setRawTrustedNames(event.target.value)}
+            />
+            <div style={{ ...styles.row, marginTop: 10 }}>
+              <button type="button" style={styles.buttonPrimary} onClick={saveTrustedLists}>
+                Save trusted list
+              </button>
+              <label style={{ ...styles.buttonGhost, cursor: "pointer" }}>
+                Import emails
+                <input
+                  type="file"
+                  accept="text/plain,.csv"
+                  style={{ display: "none" }}
+                  onChange={(event) => {
+                    const file = event.target.files?.[0]
+                    if (file) importTrustedSenders(file)
+                    event.currentTarget.value = ""
+                  }}
+                />
+              </label>
+            </div>
+            <p style={styles.helper}>
+              Used for allowlist checks and display-name spoof detection.
+            </p>
+            <p style={styles.helper}>
+              Import expects one email per line (CSV also supported).
+            </p>
+          </div>
           <p style={styles.helper}>
-            API configuration comes from `.env` (no popup settings required).
-          </p>
-          <p style={styles.helper}>
-            Radar calls your backend with sender, recipient, and body text to score risk.
+            Radar runs locally in the extension using rule-based signals.
           </p>
         </div>
       </div>
