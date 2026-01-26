@@ -6,11 +6,11 @@ export const config: PlasmoCSConfig = {
   run_at: "document_end"
 }
 
-const PLACEHOLDER_REGEX = /<(EMAIL|PHONE|CC|PASSWORD|CUSTOM)_\d+>/g
+const PLACEHOLDER_REGEX = /<(EMAIL|PHONE|CC|PASSWORD|CUSTOM|TOKEN)_\d+>/g
 
 const mappingByPlaceholder = new Map<string, string>()
 const mappingByOriginal = new Map<string, string>()
-const counters = { EMAIL: 0, PHONE: 0, CC: 0, PASSWORD: 0, CUSTOM: 0 }
+const counters = { EMAIL: 0, PHONE: 0, CC: 0, PASSWORD: 0, CUSTOM: 0, TOKEN: 0 }
 let badgeEl: HTMLDivElement | null = null
 let assistantObserver: MutationObserver | null = null
 let lastPromptEl: HTMLElement | null = null
@@ -32,6 +32,28 @@ const PHONE_REGEX =
 const CC_REGEX = /\b(?:\d[\s-]*?){13,19}\b/g
 const PASSWORD_VALUE_REGEX =
   /\b(password|passcode|passwd|pwd)(\s*(?:is|=|:)\s*)([^\s,;]+)/gi
+const TOKEN_VALUE_REGEX =
+  /\b(api[_-]?key|access[_-]?token|id[_-]?token|refresh[_-]?token|token|secret|aws[_-]?secret[_-]?access[_-]?key|aws[_-]?access[_-]?key)(\s*(?:is|=|:)\s*)([A-Za-z0-9._~+/=:-]{16,})/gi
+const BEARER_TOKEN_REGEX = /\bBearer\s+([A-Za-z0-9._~+/=-]{20,})\b/g
+const TOKEN_REGEXES: RegExp[] = [
+  /\beyJ[A-Za-z0-9_-]+?\.[A-Za-z0-9_-]+?\.[A-Za-z0-9_-]+?\b/g,
+  /\b(A3T[A-Z0-9]{16}|AKIA[0-9A-Z]{16}|ASIA[0-9A-Z]{16}|AGPA[0-9A-Z]{16}|AIDA[0-9A-Z]{16}|AROA[0-9A-Z]{16}|AIPA[0-9A-Z]{16}|ANPA[0-9A-Z]{16}|ANVA[0-9A-Z]{16}|ASCA[0-9A-Z]{16})\b/g,
+  /\bAIza[0-9A-Za-z-_]{35}\b/g,
+  /\bsk-[A-Za-z0-9]{20,}\b/g,
+  /\bsk-ant-[A-Za-z0-9-_]{10,}\b/g,
+  /\b(ghp|gho|ghu|ghs)_[A-Za-z0-9]{36}\b/g,
+  /\bgithub_pat_[A-Za-z0-9_]{22,}\b/g,
+  /\bglpat-[A-Za-z0-9_-]{20,}\b/g,
+  /\bxox[baprs]-[A-Za-z0-9-]{10,}\b/g,
+  /\bSG\.[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}\b/g,
+  /\b(sk|rk)_(live|test)_[A-Za-z0-9]{16,}\b/g,
+  /\bSK[0-9a-fA-F]{32}\b/g,
+  /\bnpm_[A-Za-z0-9]{36}\b/g,
+  /\bsl\.[A-Za-z0-9_-]{16,}\b/g,
+  /\b\d{6,}:[A-Za-z0-9_-]{30,}\b/g,
+  /\b(do[orpi]_v1_[A-Za-z0-9]{64})\b/g,
+  /-----BEGIN [A-Z ]+PRIVATE KEY-----[\s\S]+?-----END [A-Z ]+PRIVATE KEY-----/g
+]
 
 const escapeRegExp = (value: string) => value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")
 
@@ -134,6 +156,52 @@ const redactPasswordValues = (text: string, created?: string[]) => {
   })
 }
 
+const redactTokenValues = (text: string, created?: string[]) => {
+  TOKEN_VALUE_REGEX.lastIndex = 0
+  let redacted = text.replace(TOKEN_VALUE_REGEX, (match, label, separator, value) => {
+    if (PLACEHOLDER_REGEX.test(value)) {
+      return match
+    }
+    const existing = mappingByOriginal.get(value)
+    if (existing) {
+      return `${label}${separator}${existing}`
+    }
+    const placeholder = makePlaceholder("TOKEN")
+    mappingByOriginal.set(value, placeholder)
+    mappingByPlaceholder.set(placeholder, value)
+    if (created) {
+      created.push(placeholder)
+    }
+    return `${label}${separator}${placeholder}`
+  })
+  BEARER_TOKEN_REGEX.lastIndex = 0
+  redacted = redacted.replace(BEARER_TOKEN_REGEX, (match, value) => {
+    if (PLACEHOLDER_REGEX.test(value)) {
+      return match
+    }
+    const existing = mappingByOriginal.get(value)
+    if (existing) {
+      return `Bearer ${existing}`
+    }
+    const placeholder = makePlaceholder("TOKEN")
+    mappingByOriginal.set(value, placeholder)
+    mappingByPlaceholder.set(placeholder, value)
+    if (created) {
+      created.push(placeholder)
+    }
+    return `Bearer ${placeholder}`
+  })
+  return redacted
+}
+
+const redactTokenPatterns = (text: string, created?: string[]) => {
+  let redacted = text
+  TOKEN_REGEXES.forEach((regex) => {
+    redacted = replaceWithPlaceholders(redacted, "TOKEN", regex, created)
+  })
+  return redacted
+}
+
 const redactCustomPatterns = (text: string, created?: string[]) => {
   if (!customRegexes.length) {
     return text
@@ -219,11 +287,17 @@ const redactTextWithReport = (text: string) => {
   const phoneCount = countMatches(text, PHONE_REGEX)
   const ccCount = countMatches(text, CC_REGEX)
   const passwordCount = countMatches(text, PASSWORD_VALUE_REGEX)
+  const tokenCount =
+    countMatches(text, TOKEN_VALUE_REGEX) +
+    countMatches(text, BEARER_TOKEN_REGEX) +
+    TOKEN_REGEXES.reduce((sum, regex) => sum + countMatches(text, regex), 0)
   const customCount = customRegexes.reduce((sum, regex) => sum + countMatches(text, regex), 0)
 
   let redacted = text
   redacted = redactPasswordValues(redacted, created)
+  redacted = redactTokenValues(redacted, created)
   redacted = redactCustomPatterns(redacted, created)
+  redacted = redactTokenPatterns(redacted, created)
   redacted = replaceWithPlaceholders(redacted, "EMAIL", EMAIL_REGEX, created)
   redacted = redactCreditCards(redacted, created)
   redacted = redactPhones(redacted, created)
@@ -231,7 +305,7 @@ const redactTextWithReport = (text: string) => {
   return {
     redacted,
     created,
-    report: { emailCount, phoneCount, ccCount, passwordCount, customCount }
+    report: { emailCount, phoneCount, ccCount, passwordCount, tokenCount, customCount }
   }
 }
 

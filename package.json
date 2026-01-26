@@ -1,8 +1,8 @@
 {
   "name": "vamiguard-extension",
-  "displayName": "VamiGuard Extension",
+  "displayName": "VamiGuard",
   "version": "0.0.1",
-  "description": "Cybersecurity browser extension for PII redaction, prompt firewall, and phishing radar.",
+  "description": "Cybersecurity browser extension for PII redaction, and phishing radar.",
   "author": "Rayen",
   "scripts": {
     "dev": "plasmo dev",
