@@ -2,7 +2,7 @@ import type { PlasmoCSConfig } from "plasmo"
 import { settingsStore } from "../shared/storage"
 
 export const config: PlasmoCSConfig = {
-  matches: ["https://chatgpt.com/*", "https://claude.ai/*"],
+  matches: ["https://chatgpt.com/*", "https://claude.ai/*", "https://gemini.google.com/*"],
   run_at: "document_end"
 }
 
@@ -253,7 +253,11 @@ const restorePlaceholdersInAssistantMessage = (root: Element) => {
   }
 }
 
-const ASSISTANT_SELECTORS = ["[data-message-author-role='assistant']", "p.font-claude-response-body"]
+const ASSISTANT_SELECTORS = [
+  "[data-message-author-role='assistant']",
+  "p.font-claude-response-body",
+  "div[id^='model-response-message-content']"
+]
 
 const observeAssistantMessages = () => {
   if (!document.body) {
@@ -332,6 +336,10 @@ const getPromptElement = (): HTMLElement | null => {
   }
 
   const root = document.querySelector("main") ?? document
+  const known =
+    root.querySelector("[data-testid='chat-input']") ||
+    root.querySelector(".ql-editor[contenteditable='true']")
+  if (known) return known as HTMLElement
   const textarea =
     root.querySelector("textarea[data-testid='prompt-textarea']") ||
     root.querySelector("textarea")
