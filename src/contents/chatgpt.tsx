@@ -2,7 +2,7 @@ import type { PlasmoCSConfig } from "plasmo"
 import { settingsStore } from "../shared/storage"
 
 export const config: PlasmoCSConfig = {
-  matches: ["https://chatgpt.com/*"],
+  matches: ["https://chatgpt.com/*", "https://claude.ai/*"],
   run_at: "document_end"
 }
 
@@ -253,6 +253,8 @@ const restorePlaceholdersInAssistantMessage = (root: Element) => {
   }
 }
 
+const ASSISTANT_SELECTORS = ["[data-message-author-role='assistant']", "p.font-claude-response-body"]
+
 const observeAssistantMessages = () => {
   if (!document.body) {
     return null
@@ -264,14 +266,12 @@ const observeAssistantMessages = () => {
           continue
         }
 
-        if (node.matches("[data-message-author-role='assistant']")) {
+        if (ASSISTANT_SELECTORS.some((selector) => node.matches(selector))) {
           restorePlaceholdersInAssistantMessage(node)
           continue
         }
 
-        const assistantNodes = node.querySelectorAll(
-          "[data-message-author-role='assistant']"
-        )
+        const assistantNodes = node.querySelectorAll(ASSISTANT_SELECTORS.join(","))
         assistantNodes.forEach((el) => restorePlaceholdersInAssistantMessage(el))
       }
     }
