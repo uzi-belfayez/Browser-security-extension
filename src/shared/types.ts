@@ -23,6 +23,7 @@ export interface PhishingResponse {
 export interface Settings {
   enablePiiRedactor: boolean
   enablePhishingRadar: boolean
+  enableOutlookRadar: boolean
   customPatterns: string[]
   customRegexPatterns: string[]
   trustedSenders: string[]

@@ -3,6 +3,7 @@ import type { Settings } from "./types"
 export const defaultSettings: Settings = {
   enablePiiRedactor: true,
   enablePhishingRadar: true,
+  enableOutlookRadar: true,
   customPatterns: [],
   customRegexPatterns: [],
   trustedSenders: [],

@@ -461,12 +461,22 @@ export const Popup: React.FC = () => {
             <span style={styles.badge}>Phishing Radar</span>
           </div>
           <Switch
-            label="Enable Phishing Radar"
+            label="Enable Gmail Radar"
             checked={settings.enablePhishingRadar}
             onChange={(next) =>
               updateSettings({
                 ...settings,
                 enablePhishingRadar: next
+              })
+            }
+          />
+          <Switch
+            label="Enable Outlook Radar"
+            checked={settings.enableOutlookRadar}
+            onChange={(next) =>
+              updateSettings({
+                ...settings,
+                enableOutlookRadar: next
               })
             }
           />
