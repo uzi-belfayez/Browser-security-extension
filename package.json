@@ -1,9 +1,9 @@
 {
   "name": "vamiguard-extension",
   "displayName": "VamiGuard",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "description": "Cybersecurity browser extension for PII redaction, and phishing radar.",
-  "author": "Rayen",
+  "author": "uzi-belfayez",
   "scripts": {
     "dev": "plasmo dev",
     "build": "plasmo build",
@@ -41,7 +41,8 @@
       "https://chatgpt.com/*",
       "https://claude.ai/*",
       "https://gemini.google.com/*",
-      "https://mail.google.com/*"
+      "https://mail.google.com/*",
+      "https://outlook.office.com/*"
     ]
   }
 }
