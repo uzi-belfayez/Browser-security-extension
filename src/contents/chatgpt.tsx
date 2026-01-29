@@ -18,6 +18,12 @@ let customPatterns: string[] = []
 let customRegexPatterns: string[] = []
 let customRegexes: RegExp[] = []
 let redactorEnabled = true
+let redactEmailsEnabled = true
+let redactPhonesEnabled = true
+let redactCreditCardsEnabled = true
+let redactPasswordsEnabled = true
+let redactTokensEnabled = true
+let redactCustomPatternsEnabled = true
 let lastRedaction:
   | {
       original: string
@@ -283,24 +289,41 @@ const redactCreditCards = (text: string, created?: string[]) => {
 
 const redactTextWithReport = (text: string) => {
   const created: string[] = []
-  const emailCount = countMatches(text, EMAIL_REGEX)
-  const phoneCount = countMatches(text, PHONE_REGEX)
-  const ccCount = countMatches(text, CC_REGEX)
-  const passwordCount = countMatches(text, PASSWORD_VALUE_REGEX)
-  const tokenCount =
-    countMatches(text, TOKEN_VALUE_REGEX) +
-    countMatches(text, BEARER_TOKEN_REGEX) +
-    TOKEN_REGEXES.reduce((sum, regex) => sum + countMatches(text, regex), 0)
-  const customCount = customRegexes.reduce((sum, regex) => sum + countMatches(text, regex), 0)
+  const emailCount = redactEmailsEnabled ? countMatches(text, EMAIL_REGEX) : 0
+  const phoneCount = redactPhonesEnabled ? countMatches(text, PHONE_REGEX) : 0
+  const ccCount = redactCreditCardsEnabled ? countMatches(text, CC_REGEX) : 0
+  const passwordCount = redactPasswordsEnabled ? countMatches(text, PASSWORD_VALUE_REGEX) : 0
+  const tokenCount = redactTokensEnabled
+    ? countMatches(text, TOKEN_VALUE_REGEX) +
+      countMatches(text, BEARER_TOKEN_REGEX) +
+      TOKEN_REGEXES.reduce((sum, regex) => sum + countMatches(text, regex), 0)
+    : 0
+  const customCount = redactCustomPatternsEnabled
+    ? customRegexes.reduce((sum, regex) => sum + countMatches(text, regex), 0)
+    : 0
 
   let redacted = text
-  redacted = redactPasswordValues(redacted, created)
-  redacted = redactTokenValues(redacted, created)
-  redacted = redactCustomPatterns(redacted, created)
-  redacted = redactTokenPatterns(redacted, created)
-  redacted = replaceWithPlaceholders(redacted, "EMAIL", EMAIL_REGEX, created)
-  redacted = redactCreditCards(redacted, created)
-  redacted = redactPhones(redacted, created)
+  if (redactPasswordsEnabled) {
+    redacted = redactPasswordValues(redacted, created)
+  }
+  if (redactTokensEnabled) {
+    redacted = redactTokenValues(redacted, created)
+  }
+  if (redactCustomPatternsEnabled) {
+    redacted = redactCustomPatterns(redacted, created)
+  }
+  if (redactTokensEnabled) {
+    redacted = redactTokenPatterns(redacted, created)
+  }
+  if (redactEmailsEnabled) {
+    redacted = replaceWithPlaceholders(redacted, "EMAIL", EMAIL_REGEX, created)
+  }
+  if (redactCreditCardsEnabled) {
+    redacted = redactCreditCards(redacted, created)
+  }
+  if (redactPhonesEnabled) {
+    redacted = redactPhones(redacted, created)
+  }
 
   return {
     redacted,
@@ -718,12 +741,24 @@ const loadSettings = async () => {
     customPatterns = settings.customPatterns || []
     customRegexPatterns = settings.customRegexPatterns || []
     redactorEnabled = settings.enablePiiRedactor !== false
+    redactEmailsEnabled = settings.redactEmails !== false
+    redactPhonesEnabled = settings.redactPhones !== false
+    redactCreditCardsEnabled = settings.redactCreditCards !== false
+    redactPasswordsEnabled = settings.redactPasswords !== false
+    redactTokensEnabled = settings.redactTokens !== false
+    redactCustomPatternsEnabled = settings.redactCustomPatterns !== false
     rebuildCustomRegexes()
   } catch {
     customPatterns = []
     customRegexPatterns = []
     customRegexes = []
     redactorEnabled = true
+    redactEmailsEnabled = true
+    redactPhonesEnabled = true
+    redactCreditCardsEnabled = true
+    redactPasswordsEnabled = true
+    redactTokensEnabled = true
+    redactCustomPatternsEnabled = true
   }
 }
 
@@ -757,6 +792,24 @@ const init = () => {
         : []
       if (typeof next.enablePiiRedactor === "boolean") {
         redactorEnabled = next.enablePiiRedactor
+      }
+      if (typeof next.redactEmails === "boolean") {
+        redactEmailsEnabled = next.redactEmails
+      }
+      if (typeof next.redactPhones === "boolean") {
+        redactPhonesEnabled = next.redactPhones
+      }
+      if (typeof next.redactCreditCards === "boolean") {
+        redactCreditCardsEnabled = next.redactCreditCards
+      }
+      if (typeof next.redactPasswords === "boolean") {
+        redactPasswordsEnabled = next.redactPasswords
+      }
+      if (typeof next.redactTokens === "boolean") {
+        redactTokensEnabled = next.redactTokens
+      }
+      if (typeof next.redactCustomPatterns === "boolean") {
+        redactCustomPatternsEnabled = next.redactCustomPatterns
       }
       rebuildCustomRegexes()
       const controls = document.getElementById(CONTROLS_ID)

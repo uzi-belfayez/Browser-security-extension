@@ -4,6 +4,7 @@ import type { Settings } from "../shared/types"
 
 export const Popup: React.FC = () => {
   const [settings, setSettings] = useState<Settings>(defaultSettings)
+  const [activeTab, setActiveTab] = useState<"pii" | "phishing">("pii")
   const [rawTextPatterns, setRawTextPatterns] = useState("")
   const [rawRegexPatterns, setRawRegexPatterns] = useState("")
   const [rawTrustedSenders, setRawTrustedSenders] = useState("")
@@ -86,6 +87,56 @@ export const Popup: React.FC = () => {
       setRawTrustedSenders(nextSenders.join("\n"))
     }
     reader.readAsText(file)
+  }
+
+  const importTrustedDomains = (file: File) => {
+    const reader = new FileReader()
+    reader.onload = () => {
+      const content = String(reader.result || "")
+      const nextDomains = splitPatterns(content)
+      updateSettings({
+        ...settings,
+        trustedDomains: nextDomains
+      })
+      setRawTrustedDomains(nextDomains.join("\n"))
+    }
+    reader.readAsText(file)
+  }
+
+  const importTrustedNames = (file: File) => {
+    const reader = new FileReader()
+    reader.onload = () => {
+      const content = String(reader.result || "")
+      const nextNames = splitPatterns(content)
+      updateSettings({
+        ...settings,
+        trustedNames: nextNames
+      })
+      setRawTrustedNames(nextNames.join("\n"))
+    }
+    reader.readAsText(file)
+  }
+
+  const exportTextFile = (content: string, filename: string) => {
+    const blob = new Blob([content], { type: "text/plain" })
+    const url = URL.createObjectURL(blob)
+    const link = document.createElement("a")
+    link.href = url
+    link.download = filename
+    link.click()
+    URL.revokeObjectURL(url)
+  }
+
+  const exportTrustedSenders = () => {
+    exportTextFile(settings.trustedSenders.join("\n"), "vamiguard-trusted-senders.txt")
+  }
+
+  const exportTrustedDomains = () => {
+    exportTextFile(settings.trustedDomains.join("\n"), "vamiguard-trusted-domains.txt")
+  }
+
+  const exportTrustedNames = () => {
+    exportTextFile(settings.trustedNames.join("\n"), "vamiguard-trusted-names.txt")
   }
 
 
@@ -176,6 +227,30 @@ export const Popup: React.FC = () => {
       alignItems: "flex-end",
       gap: 6
     },
+    tabs: {
+      display: "flex",
+      gap: 8,
+      width: "100%"
+    },
+    tab: (active: boolean) => ({
+      flex: 1,
+      padding: "8px 10px",
+      borderRadius: 10,
+      border: active
+        ? "1px solid #38bdf8"
+        : isDark
+          ? "1px solid #1f2a44"
+          : "1px solid #cbd5f5",
+      background: active
+        ? "#38bdf8"
+        : isDark
+          ? "rgba(15, 23, 42, 0.7)"
+          : "#ffffff",
+      color: active ? "#0b1220" : isDark ? "#e2e8f0" : "#0f172a",
+      fontSize: 12,
+      fontWeight: 600,
+      cursor: "pointer"
+    }),
     card: {
       background: isDark
         ? "linear-gradient(180deg, rgba(15, 23, 42, 0.95) 0%, rgba(11, 18, 32, 0.95) 100%)"
@@ -380,8 +455,25 @@ export const Popup: React.FC = () => {
           <ThemeSelector />
         </div>
       </div>
+      <div style={styles.tabs}>
+        <button
+          type="button"
+          style={styles.tab(activeTab === "pii")}
+          onClick={() => setActiveTab("pii")}
+        >
+          PII Redactor
+        </button>
+        <button
+          type="button"
+          style={styles.tab(activeTab === "phishing")}
+          onClick={() => setActiveTab("phishing")}
+        >
+          Phishing Radar
+        </button>
+      </div>
 
       <div style={styles.cardStack}>
+        {activeTab === "pii" ? (
         <div style={styles.card}>
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
             <h4 style={styles.sectionTitle}>PII Redactor</h4>
@@ -407,6 +499,69 @@ export const Popup: React.FC = () => {
               })
             }
           />
+          <div style={{ marginTop: 10 }}>
+            <div style={styles.label}>Default redaction toggles</div>
+            <Switch
+              label="Redact emails"
+              checked={settings.redactEmails}
+              onChange={(next) =>
+                updateSettings({
+                  ...settings,
+                  redactEmails: next
+                })
+              }
+            />
+            <Switch
+              label="Redact phone numbers"
+              checked={settings.redactPhones}
+              onChange={(next) =>
+                updateSettings({
+                  ...settings,
+                  redactPhones: next
+                })
+              }
+            />
+            <Switch
+              label="Redact credit cards"
+              checked={settings.redactCreditCards}
+              onChange={(next) =>
+                updateSettings({
+                  ...settings,
+                  redactCreditCards: next
+                })
+              }
+            />
+            <Switch
+              label="Redact passwords"
+              checked={settings.redactPasswords}
+              onChange={(next) =>
+                updateSettings({
+                  ...settings,
+                  redactPasswords: next
+                })
+              }
+            />
+            <Switch
+              label="Redact tokens/keys"
+              checked={settings.redactTokens}
+              onChange={(next) =>
+                updateSettings({
+                  ...settings,
+                  redactTokens: next
+                })
+              }
+            />
+            <Switch
+              label="Redact custom patterns"
+              checked={settings.redactCustomPatterns}
+              onChange={(next) =>
+                updateSettings({
+                  ...settings,
+                  redactCustomPatterns: next
+                })
+              }
+            />
+          </div>
 
           <div style={{ marginTop: 12 }}>
             <h4 style={styles.sectionTitle}>Custom Patterns</h4>
@@ -454,7 +609,9 @@ export const Popup: React.FC = () => {
             </p>
           </div>
         </div>
+        ) : null}
 
+        {activeTab === "phishing" ? (
         <div style={styles.card}>
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
             <h4 style={styles.sectionTitle}>Phishing Radar</h4>
@@ -490,27 +647,9 @@ export const Popup: React.FC = () => {
               value={rawTrustedSenders}
               onChange={(event) => setRawTrustedSenders(event.target.value)}
             />
-            <div style={{ height: 8 }} />
-            <div style={styles.label}>Trusted domains</div>
-            <textarea
-              rows={3}
-              style={styles.textarea}
-              placeholder={`company.com\npartner.org`}
-              value={rawTrustedDomains}
-              onChange={(event) => setRawTrustedDomains(event.target.value)}
-            />
-            <div style={{ height: 8 }} />
-            <div style={styles.label}>Employee display names</div>
-            <textarea
-              rows={3}
-              style={styles.textarea}
-              placeholder={`Jane Doe\nJohn Smith`}
-              value={rawTrustedNames}
-              onChange={(event) => setRawTrustedNames(event.target.value)}
-            />
-            <div style={{ ...styles.row, marginTop: 10 }}>
-              <button type="button" style={styles.buttonPrimary} onClick={saveTrustedLists}>
-                Save trusted list
+            <div style={{ ...styles.row, marginTop: 8 }}>
+              <button type="button" style={styles.buttonGhost} onClick={exportTrustedSenders}>
+                Export emails
               </button>
               <label style={{ ...styles.buttonGhost, cursor: "pointer" }}>
                 Import emails
@@ -526,6 +665,65 @@ export const Popup: React.FC = () => {
                 />
               </label>
             </div>
+            <div style={{ height: 8 }} />
+            <div style={styles.label}>Trusted domains</div>
+            <textarea
+              rows={3}
+              style={styles.textarea}
+              placeholder={`company.com\npartner.org`}
+              value={rawTrustedDomains}
+              onChange={(event) => setRawTrustedDomains(event.target.value)}
+            />
+            <div style={{ ...styles.row, marginTop: 8 }}>
+              <button type="button" style={styles.buttonGhost} onClick={exportTrustedDomains}>
+                Export domains
+              </button>
+              <label style={{ ...styles.buttonGhost, cursor: "pointer" }}>
+                Import domains
+                <input
+                  type="file"
+                  accept="text/plain,.csv"
+                  style={{ display: "none" }}
+                  onChange={(event) => {
+                    const file = event.target.files?.[0]
+                    if (file) importTrustedDomains(file)
+                    event.currentTarget.value = ""
+                  }}
+                />
+              </label>
+            </div>
+            <div style={{ height: 8 }} />
+            <div style={styles.label}>Employee display names</div>
+            <textarea
+              rows={3}
+              style={styles.textarea}
+              placeholder={`Jane Doe\nJohn Smith`}
+              value={rawTrustedNames}
+              onChange={(event) => setRawTrustedNames(event.target.value)}
+            />
+            <div style={{ ...styles.row, marginTop: 8 }}>
+              <button type="button" style={styles.buttonGhost} onClick={exportTrustedNames}>
+                Export names
+              </button>
+              <label style={{ ...styles.buttonGhost, cursor: "pointer" }}>
+                Import names
+                <input
+                  type="file"
+                  accept="text/plain,.csv"
+                  style={{ display: "none" }}
+                  onChange={(event) => {
+                    const file = event.target.files?.[0]
+                    if (file) importTrustedNames(file)
+                    event.currentTarget.value = ""
+                  }}
+                />
+              </label>
+            </div>
+            <div style={{ ...styles.row, marginTop: 10 }}>
+              <button type="button" style={styles.buttonPrimary} onClick={saveTrustedLists}>
+                Save trusted list
+              </button>
+            </div>
             <p style={styles.helper}>
               Used for allowlist checks and display-name spoof detection.
             </p>
@@ -537,6 +735,7 @@ export const Popup: React.FC = () => {
             Radar runs locally in the extension using rule-based signals.
           </p>
         </div>
+        ) : null}
       </div>
     </div>
   )

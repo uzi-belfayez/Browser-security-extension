@@ -24,6 +24,12 @@ export interface Settings {
   enablePiiRedactor: boolean
   enablePhishingRadar: boolean
   enableOutlookRadar: boolean
+  redactEmails: boolean
+  redactPhones: boolean
+  redactCreditCards: boolean
+  redactPasswords: boolean
+  redactTokens: boolean
+  redactCustomPatterns: boolean
   customPatterns: string[]
   customRegexPatterns: string[]
   trustedSenders: string[]
