@@ -26,6 +26,7 @@ let lastFingerprint = ""
 let analyzeTimer: number | null = null
 let lastResult: PhishingResponse | null = null
 let inFlight = false
+let lastMessageSignature = ""
 
 type WidgetPos = { x: number; y: number }
 
@@ -118,6 +119,14 @@ const parseSender = (raw: string) => {
   const email = emailMatch ? emailMatch[0].toLowerCase() : ""
   const name = raw.replace(/<[^>]+>/g, "").trim()
   return { email, name }
+}
+
+const getMessageSignature = () => {
+  const senderRaw = getSenderRaw()
+  const subject = getSubject()
+  const location = typeof window !== "undefined" ? window.location.href : ""
+  const signature = [senderRaw, subject, location].map(normalizeText).filter(Boolean).join("|")
+  return signature
 }
 
 const extractPhishingPayload = (): { payload: PhishingRequest; fingerprint: string } | null => {
@@ -365,17 +374,11 @@ const ensureWidget = async () => {
   const actions = doc.createElement("div")
   actions.className = "vamisec-actions"
 
-  const analyzeButton = doc.createElement("button")
-  analyzeButton.type = "button"
-  analyzeButton.setAttribute("data-action", "analyze")
-  analyzeButton.textContent = "Analyze"
-
   const hideButton = doc.createElement("button")
   hideButton.type = "button"
   hideButton.setAttribute("data-action", "hide")
   hideButton.textContent = "Hide"
 
-  actions.appendChild(analyzeButton)
   actions.appendChild(hideButton)
   header.appendChild(title)
   header.appendChild(actions)
@@ -455,9 +458,6 @@ const ensureWidget = async () => {
       } catch {
         // ignore
       }
-    }
-    if (action === "analyze") {
-      scheduleAnalysis(true)
     }
   })
 }
@@ -565,7 +565,12 @@ const loadSettings = async () => {
 
 const analyzeMessage = async (force = false) => {
   const extracted = extractPhishingPayload()
-  if (!extracted || !radarEnabled) return
+  if (!extracted || !radarEnabled) {
+    if (radarEnabled) {
+      renderWidget({ status: "idle" })
+    }
+    return
+  }
   if (extracted.fingerprint === lastFingerprint && lastResult && !force) {
     renderWidget({ status: "done", data: lastResult })
     return
@@ -587,6 +592,13 @@ const analyzeMessage = async (force = false) => {
 }
 
 const scheduleAnalysis = (force = false) => {
+  const signature = getMessageSignature()
+  if (signature && signature !== lastMessageSignature) {
+    lastMessageSignature = signature
+    lastFingerprint = ""
+    lastResult = null
+    renderWidget({ status: "loading" })
+  }
   if (analyzeTimer) {
     window.clearTimeout(analyzeTimer)
   }
