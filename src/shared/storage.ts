@@ -10,6 +10,7 @@ export const defaultSettings: Settings = {
   redactPasswords: true,
   redactTokens: true,
   redactCustomPatterns: true,
+  uiActiveTab: "pii",
   customPatterns: [],
   customRegexPatterns: [],
   trustedSenders: [],

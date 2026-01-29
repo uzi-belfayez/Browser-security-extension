@@ -30,6 +30,7 @@ export interface Settings {
   redactPasswords: boolean
   redactTokens: boolean
   redactCustomPatterns: boolean
+  uiActiveTab: "pii" | "phishing"
   customPatterns: string[]
   customRegexPatterns: string[]
   trustedSenders: string[]

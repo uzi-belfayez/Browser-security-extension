@@ -4,7 +4,7 @@ import type { Settings } from "../shared/types"
 
 export const Popup: React.FC = () => {
   const [settings, setSettings] = useState<Settings>(defaultSettings)
-  const [activeTab, setActiveTab] = useState<"pii" | "phishing">("pii")
+  const [activeTab, setActiveTab] = useState<"pii" | "phishing">(defaultSettings.uiActiveTab)
   const [rawTextPatterns, setRawTextPatterns] = useState("")
   const [rawRegexPatterns, setRawRegexPatterns] = useState("")
   const [rawTrustedSenders, setRawTrustedSenders] = useState("")
@@ -16,6 +16,7 @@ export const Popup: React.FC = () => {
       .get()
       .then((loaded) => {
         setSettings(loaded)
+        setActiveTab(loaded.uiActiveTab || "pii")
         setRawTextPatterns(loaded.customPatterns.join("\n"))
         setRawRegexPatterns(loaded.customRegexPatterns.join("\n"))
         setRawTrustedSenders(loaded.trustedSenders.join("\n"))
@@ -24,6 +25,7 @@ export const Popup: React.FC = () => {
       })
       .catch(() => {
         setSettings(defaultSettings)
+        setActiveTab(defaultSettings.uiActiveTab)
         setRawTextPatterns("")
         setRawRegexPatterns("")
         setRawTrustedSenders("")
@@ -459,14 +461,26 @@ export const Popup: React.FC = () => {
         <button
           type="button"
           style={styles.tab(activeTab === "pii")}
-          onClick={() => setActiveTab("pii")}
+          onClick={() => {
+            setActiveTab("pii")
+            updateSettings({
+              ...settings,
+              uiActiveTab: "pii"
+            })
+          }}
         >
           PII Redactor
         </button>
         <button
           type="button"
           style={styles.tab(activeTab === "phishing")}
-          onClick={() => setActiveTab("phishing")}
+          onClick={() => {
+            setActiveTab("phishing")
+            updateSettings({
+              ...settings,
+              uiActiveTab: "phishing"
+            })
+          }}
         >
           Phishing Radar
         </button>
