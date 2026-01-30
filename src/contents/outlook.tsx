@@ -26,6 +26,7 @@ let analyzeTimer: number | null = null
 let lastResult: PhishingResponse | null = null
 let inFlight = false
 let lastMessageSignature = ""
+let widgetExpanded = false
 
 type WidgetPos = { x: number; y: number }
 
@@ -118,7 +119,94 @@ const extractEmailFromElement = (el: Element | null) => {
   return textMatch ? textMatch[0].toLowerCase() : ""
 }
 
+const getNodeDistance = (a: Node, b: Node) => {
+  if (a === b) return 0
+  const aPath: Node[] = []
+  let current: Node | null = a
+  while (current) {
+    aPath.push(current)
+    current = current.parentNode
+  }
+  const bPath: Node[] = []
+  current = b
+  while (current) {
+    bPath.push(current)
+    current = current.parentNode
+  }
+  let i = aPath.length - 1
+  let j = bPath.length - 1
+  while (i >= 0 && j >= 0 && aPath[i] === bPath[j]) {
+    i -= 1
+    j -= 1
+  }
+  return (i + 1) + (j + 1)
+}
+
 const getSenderInfo = () => {
+  const fromSpans = Array.from(
+    document.querySelectorAll(
+      "[aria-label^='From:'],[aria-label^='from:'],[data-test-id*='from'],[data-automationid*='From']"
+    )
+  ) as HTMLElement[]
+  if (fromSpans.length) {
+    for (const fromEl of fromSpans) {
+      const aria = fromEl.getAttribute("aria-label") || ""
+      const textContent = normalizeText(fromEl.textContent || "")
+      const inlineEmailMatch = textContent.match(EMAIL_PATTERN)
+      if (inlineEmailMatch) {
+        const inlineEmail = inlineEmailMatch[0].toLowerCase()
+        const inlineName = textContent.replace(inlineEmailMatch[0], "").trim()
+        return { email: inlineEmail, name: inlineName || textContent }
+      }
+      const name = normalizeText(
+        (aria.toLowerCase().startsWith("from:") ? aria.slice(5) : fromEl.textContent) || ""
+      )
+      const nameLower = name.toLowerCase()
+      const nameTokens = nameLower.split(/\s+/).filter(Boolean)
+      const container =
+        (fromEl.closest("[data-test-id*='messageHeader']") as HTMLElement | null) ||
+        (fromEl.closest("[data-automationid*='MessageHeader']") as HTMLElement | null) ||
+        (fromEl.closest("[role='region']") as HTMLElement | null) ||
+        document.body
+      const candidates = Array.from(
+        container?.querySelectorAll(
+          "[data-email],[data-email-address],[data-hovercard-id],[title],a[href^='mailto:']"
+        ) || []
+      )
+      const emailCandidates = candidates
+        .map((el) => ({ el, email: extractEmailFromElement(el) }))
+        .filter((item) => Boolean(item.email))
+      if (emailCandidates.length) {
+        const hasNameMatch = (el: Element) => {
+          if (!nameLower) return false
+          let current: Element | null = el
+          for (let i = 0; i < 4 && current; i += 1) {
+            const text = normalizeText(current.textContent || "").toLowerCase()
+            if (text && nameTokens.every((token) => text.includes(token))) {
+              return true
+            }
+            current = current.parentElement
+          }
+          return false
+        }
+
+        const matchedByName = emailCandidates.filter((candidate) => hasNameMatch(candidate.el))
+        const pool = matchedByName.length ? matchedByName : emailCandidates
+
+        let best = pool[0]
+        let bestScore = Number.POSITIVE_INFINITY
+        for (const candidate of pool) {
+          const distance = getNodeDistance(fromEl, candidate.el)
+          if (distance < bestScore) {
+            bestScore = distance
+            best = candidate
+          }
+        }
+        return { email: best.email, name }
+      }
+    }
+  }
+
   const direct = document.querySelector("span.OZZZK") as HTMLElement | null
   if (direct) {
     const email = extractEmailFromElement(direct)
@@ -363,6 +451,10 @@ const ensureStyles = () => {
       font-family: "Space Grotesk", "Sora", "Segoe UI", sans-serif;
       font-size: 12px;
       overflow: hidden;
+      transition: width 180ms ease, max-height 180ms ease;
+    }
+    #${WIDGET_ID}.vamisec-expanded {
+      width: 380px;
     }
     #${WIDGET_ID} .vamisec-header {
       display: flex;
@@ -388,6 +480,16 @@ const ensureStyles = () => {
       padding: 4px 8px;
       font-size: 11px;
       cursor: pointer;
+    }
+    #${WIDGET_ID} .vamisec-expand {
+      width: 26px;
+      height: 22px;
+      padding: 0;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 14px;
+      line-height: 1;
     }
     #${WIDGET_ID} .vamisec-body {
       padding: 10px 12px 12px 12px;
@@ -415,6 +517,31 @@ const ensureStyles = () => {
     }
     #${WIDGET_ID} .vamisec-muted {
       color: #94a3b8;
+    }
+    #${WIDGET_ID} .vamisec-checks {
+      display: grid;
+      gap: 6px;
+    }
+    #${WIDGET_ID} .vamisec-check {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      font-size: 11px;
+      padding: 4px 6px;
+      border-radius: 8px;
+      border: 1px solid rgba(148, 163, 184, 0.18);
+      background: rgba(15, 23, 42, 0.45);
+    }
+    #${WIDGET_ID} .vamisec-check-status {
+      text-transform: uppercase;
+      font-size: 9px;
+      letter-spacing: 0.4px;
+      padding: 2px 6px;
+      border-radius: 999px;
+      border: 1px solid rgba(148, 163, 184, 0.25);
+      background: rgba(148, 163, 184, 0.15);
+      color: #e2e8f0;
     }
   `
   doc.head.appendChild(style)
@@ -453,11 +580,18 @@ const ensureWidget = async () => {
   const actions = doc.createElement("div")
   actions.className = "vamisec-actions"
 
+  const expandButton = doc.createElement("button")
+  expandButton.type = "button"
+  expandButton.setAttribute("data-action", "toggle")
+  expandButton.className = "vamisec-expand"
+  expandButton.textContent = "▾"
+
   const hideButton = doc.createElement("button")
   hideButton.type = "button"
   hideButton.setAttribute("data-action", "hide")
   hideButton.textContent = "Hide"
 
+  actions.appendChild(expandButton)
   actions.appendChild(hideButton)
   header.appendChild(title)
   header.appendChild(actions)
@@ -529,6 +663,10 @@ const ensureWidget = async () => {
     if (action === "hide") {
       widget.style.display = "none"
     }
+    if (action === "toggle") {
+      widgetExpanded = !widgetExpanded
+      renderWidget({ status: lastResult ? "done" : "idle", data: lastResult || undefined })
+    }
   })
 }
 
@@ -537,6 +675,21 @@ const renderWidget = (state: { status: "idle" | "loading" | "error" | "done"; da
   if (!doc) return
   const widget = doc.getElementById(WIDGET_ID)
   if (!widget) return
+  if (widgetExpanded) {
+    widget.classList.add("vamisec-expanded")
+  } else {
+    widget.classList.remove("vamisec-expanded")
+  }
+  const expandButton = widget.querySelector(
+    "button[data-action='toggle']"
+  ) as HTMLButtonElement | null
+  if (expandButton) {
+    expandButton.textContent = widgetExpanded ? "▴" : "▾"
+    expandButton.setAttribute(
+      "aria-label",
+      widgetExpanded ? "Collapse details" : "Expand details"
+    )
+  }
   const body = widget.querySelector(".vamisec-body") as HTMLElement | null
   if (!body) return
   clearChildren(body)
@@ -569,6 +722,7 @@ const renderWidget = (state: { status: "idle" | "loading" | "error" | "done"; da
     const colors = getRiskColors(state.data.risk)
     const score = Math.round((state.data.score > 1 ? state.data.score : state.data.score * 100) || 0)
     const signals = (state.data.signals || []).slice(0, 5)
+    const checks = state.data.checks || []
     const scoreRow = doc.createElement("div")
     scoreRow.className = "vamisec-score"
 
@@ -608,6 +762,23 @@ const renderWidget = (state: { status: "idle" | "loading" | "error" | "done"; da
       muted.className = "vamisec-muted"
       muted.textContent = "No suspicious signals."
       body.appendChild(muted)
+    }
+    if (widgetExpanded && checks.length) {
+      const checksWrap = doc.createElement("div")
+      checksWrap.className = "vamisec-checks"
+      checks.forEach((check) => {
+        const row = doc.createElement("div")
+        row.className = "vamisec-check"
+        const label = doc.createElement("span")
+        label.textContent = check.detail ? `${check.label}: ${check.detail}` : check.label
+        const status = doc.createElement("span")
+        status.className = "vamisec-check-status"
+        status.textContent = check.status
+        row.appendChild(label)
+        row.appendChild(status)
+        checksWrap.appendChild(row)
+      })
+      body.appendChild(checksWrap)
     }
     return
   }
