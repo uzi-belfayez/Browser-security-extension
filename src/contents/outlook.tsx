@@ -16,7 +16,6 @@ export const config: PlasmoCSConfig = {
 const WIDGET_ID = "vamisec-outlook-widget"
 const STYLE_ID = "vamisec-outlook-widget-style"
 const STORAGE_POS_KEY = "vamisec_outlook_widget_pos"
-const STORAGE_HIDE_KEY = "vamisec_outlook_widget_hidden"
 
 let radarEnabled = true
 let trustedSenders: string[] = []
@@ -45,6 +44,8 @@ const extractDomain = (email: string) => {
 }
 
 const normalizeDomain = (value: string) => value.toLowerCase().replace(/^www\./, "")
+
+const EMAIL_PATTERN = /[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/i
 
 const editDistance = (a: string, b: string) => {
   const aLen = a.length
@@ -92,16 +93,85 @@ const getBodyText = () => {
   return normalizeText(clone.innerText || clone.textContent || "")
 }
 
-const getSenderRaw = () => {
-  const el = document.querySelector("span.OZZZK") as HTMLElement | null
-  if (el?.textContent) return normalizeText(el.textContent)
-  const header = document.querySelector("[data-test-id='messageHeader']") as HTMLElement | null
-  if (!header) return ""
-  const spans = Array.from(header.querySelectorAll("span"))
-  const emailSpan = spans.find((span) =>
-    /[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/i.test(span.textContent || "")
+const extractEmailFromElement = (el: Element | null) => {
+  if (!el) return ""
+  const attrCandidates = [
+    el.getAttribute("email"),
+    el.getAttribute("data-email"),
+    el.getAttribute("data-hovercard-id"),
+    el.getAttribute("data-email-address"),
+    el.getAttribute("data-emailaddress"),
+    el.getAttribute("data-email"),
+    el.getAttribute("title"),
+    el.getAttribute("aria-label")
+  ].filter(Boolean) as string[]
+  for (const value of attrCandidates) {
+    const match = value.match(EMAIL_PATTERN)
+    if (match) return match[0].toLowerCase()
+  }
+  if (el instanceof HTMLAnchorElement && el.href?.startsWith("mailto:")) {
+    const mail = el.href.replace(/^mailto:/i, "").split("?")[0]
+    if (EMAIL_PATTERN.test(mail)) return mail.toLowerCase()
+  }
+  const text = el.textContent || ""
+  const textMatch = text.match(EMAIL_PATTERN)
+  return textMatch ? textMatch[0].toLowerCase() : ""
+}
+
+const getSenderInfo = () => {
+  const direct = document.querySelector("span.OZZZK") as HTMLElement | null
+  if (direct) {
+    const email = extractEmailFromElement(direct)
+    const name = normalizeText(direct.textContent || "")
+    if (email || name) return { email, name }
+  }
+
+  const header =
+    (document.querySelector("[data-test-id='messageHeader']") as HTMLElement | null) ||
+    (document.querySelector("[data-automationid='MessageHeader']") as HTMLElement | null) ||
+    (document.querySelector("[data-test-id*='messageHeader']") as HTMLElement | null)
+  if (header) {
+    const fromCandidates = Array.from(
+      header.querySelectorAll(
+        "[data-test-id*='from'],[data-automationid*='From'],[aria-label*='From'],[aria-label*='from'],[aria-label*='From:'],[aria-label*='from:'],[role='button'][aria-label*='From'],[role='button'][aria-label*='from']"
+      )
+    )
+    for (const el of fromCandidates) {
+      const email = extractEmailFromElement(el)
+      const name = normalizeText(el.textContent || "")
+      if (email || name) return { email, name }
+    }
+
+    const headerEmail = extractEmailFromElement(header)
+    if (headerEmail) {
+      const name = normalizeText(header.textContent || "").replace(headerEmail, "").trim()
+      return { email: headerEmail, name }
+    }
+
+    const elements = Array.from(header.querySelectorAll("span,div,a"))
+    for (const el of elements) {
+      const email = extractEmailFromElement(el)
+      if (email) {
+        const name = normalizeText(el.textContent || "")
+        return { email, name }
+      }
+    }
+  }
+
+  const fallbackElements = Array.from(
+    document.querySelectorAll(
+      "[aria-label*='From'],[aria-label*='from'],[data-test-id*='from'],[data-automationid*='From'],a[href^='mailto:']"
+    )
   )
-  return normalizeText(emailSpan?.textContent || header.textContent || "")
+  for (const el of fallbackElements) {
+    const email = extractEmailFromElement(el)
+    if (email) {
+      const name = normalizeText(el.textContent || "")
+      return { email, name }
+    }
+  }
+
+  return { email: "", name: "" }
 }
 
 const getSubject = () => {
@@ -115,14 +185,20 @@ const getSubject = () => {
 }
 
 const parseSender = (raw: string) => {
-  const emailMatch = raw.match(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/i)
+  const emailMatch = raw.match(EMAIL_PATTERN)
   const email = emailMatch ? emailMatch[0].toLowerCase() : ""
-  const name = raw.replace(/<[^>]+>/g, "").trim()
+  const name = raw
+    .replace(/<[^>]+>/g, "")
+    .replace(/\([^)]*@[^)]*\)/g, "")
+    .replace(email, "")
+    .trim()
   return { email, name }
 }
 
 const getMessageSignature = () => {
-  const senderRaw = getSenderRaw()
+  const senderInfo = getSenderInfo()
+  const senderRaw =
+    senderInfo.email || senderInfo.name ? `${senderInfo.name} <${senderInfo.email}>` : ""
   const subject = getSubject()
   const location = typeof window !== "undefined" ? window.location.href : ""
   const signature = [senderRaw, subject, location].map(normalizeText).filter(Boolean).join("|")
@@ -132,9 +208,12 @@ const getMessageSignature = () => {
 const extractPhishingPayload = (): { payload: PhishingRequest; fingerprint: string } | null => {
   const bodyText = getBodyText()
   if (!bodyText) return null
-  const senderRaw = getSenderRaw()
   const subject = getSubject()
-  const { email, name } = parseSender(senderRaw)
+  const senderInfo = getSenderInfo()
+  const senderRaw =
+    senderInfo.email || senderInfo.name ? `${senderInfo.name} <${senderInfo.email}>` : ""
+  const { email, name } =
+    senderInfo.email || senderInfo.name ? senderInfo : parseSender(senderRaw)
 
   const payload: PhishingRequest = {
     sender_email: normalizeEmail(email),
@@ -395,12 +474,8 @@ const ensureWidget = async () => {
 
   doc.documentElement.appendChild(widget)
 
-  const stored = await chrome.storage.local.get([STORAGE_POS_KEY, STORAGE_HIDE_KEY])
+  const stored = await chrome.storage.local.get([STORAGE_POS_KEY])
   const pos = stored?.[STORAGE_POS_KEY] as WidgetPos | undefined
-  const hidden = stored?.[STORAGE_HIDE_KEY] === true
-  if (hidden) {
-    widget.style.display = "none"
-  }
   if (pos && typeof pos.x === "number" && typeof pos.y === "number") {
     widget.style.right = "auto"
     widget.style.bottom = "auto"
@@ -453,11 +528,6 @@ const ensureWidget = async () => {
     if (!action) return
     if (action === "hide") {
       widget.style.display = "none"
-      try {
-        await chrome.storage.local.set({ [STORAGE_HIDE_KEY]: true })
-      } catch {
-        // ignore
-      }
     }
   })
 }
